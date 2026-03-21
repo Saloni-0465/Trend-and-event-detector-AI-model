@@ -8,7 +8,7 @@ the temporal evaluation harness and strong frequency baselines required by the b
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 import pandas as pd
 
@@ -19,13 +19,9 @@ from src.baselines.temporal_windows import (
     window_strings_from_tokens,
 )
 from src.baselines.tfidf_topics import tfidf_top_terms_per_window
-from src.data.loaders import load_stream_csv
 from src.data.preprocess import add_tokens_column
-from src.data.synthetic import generate_synthetic_social_stream
 from src.evaluation.temporal_baseline_metrics import mean_adjacent_jaccard
-
-
-Source = Literal["synthetic", "csv"]
+from src.pipeline_common import Source, load_raw_stream
 
 
 def _terms_only(ranked: list[tuple[str, float | int]]) -> list[str]:
@@ -51,14 +47,16 @@ def run_part1(
 
     If output_dir is set, writes part1_window_terms.csv (long format).
     """
-    if source == "synthetic":
-        df = generate_synthetic_social_stream(
-            n_docs=n_docs, seed=seed, start=start, end=end
-        )
-    else:
-        if not csv_path:
-            raise ValueError("csv_path required when source='csv'")
-        df = load_stream_csv(csv_path, text_col=text_col, time_col=time_col)
+    df = load_raw_stream(
+        source=source,
+        csv_path=csv_path,
+        text_col=text_col,
+        time_col=time_col,
+        seed=seed,
+        n_docs=n_docs,
+        start=start,
+        end=end,
+    )
 
     df = add_tokens_column(df, text_col=text_col, out_col="tokens")
     df = add_time_bin(df, time_col=time_col, freq=window_freq, out_col="time_bin")
