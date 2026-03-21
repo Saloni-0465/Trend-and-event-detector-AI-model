@@ -26,16 +26,7 @@ from src.advanced_ml.temporal_lda import mean_topic_mixture_by_bin
 from src.baselines.temporal_windows import add_time_bin
 from src.data.preprocess import add_tokens_column
 from src.evaluation.topic_temporal_metrics import mean_adjacent_jsd
-from src.pipeline_common import Source, load_raw_stream
-
-
-def _time_ordered_split(n: int, train_frac: float) -> tuple[np.ndarray, np.ndarray]:
-    if n == 0:
-        return np.array([], dtype=int), np.array([], dtype=int)
-    cut = max(1, int(np.floor(n * train_frac)))
-    cut = min(cut, n - 1) if n > 1 else 1
-    idx = np.arange(n)
-    return idx[:cut], idx[cut:]
+from src.pipeline_common import Source, load_raw_stream, time_ordered_split
 
 
 def run_part2(
@@ -73,7 +64,7 @@ def run_part2(
 
     texts = df["tokens"].tolist()
     n = len(texts)
-    train_idx, test_idx = _time_ordered_split(n, train_frac)
+    train_idx, test_idx = time_ordered_split(n, train_frac)
     train_texts = [texts[i] for i in train_idx]
     test_texts = [texts[i] for i in test_idx]
 
