@@ -1,0 +1,23 @@
+# Core
+numpy>=1.24,<3
+pandas>=2.0,<3
+scikit-learn>=1.3,<2
+scipy>=1.11,<2
+
+# Advanced ML / probabilistic topics
+gensim>=4.3,<5
+
+# Deep learning (CPU by default; install torch with CUDA separately if needed)
+torch>=2.1,<3
+transformers>=4.36,<5
+sentence-transformers>=2.2,<4
+
+# NLP utilities
+nltk>=3.8,<4
+
+# Config & CLI
+pyyaml>=6.0,<7
+tqdm>=4.66,<5
+
+# Dev / tests
+pytest>=7.4,<9
