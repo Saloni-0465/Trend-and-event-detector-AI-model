@@ -1,6 +1,17 @@
-"""Placeholder for LDA / dynamic topic models — implement with theory notes in report."""
+"""Probabilistic topic models — LDA implementation lives in `lda_gensim`."""
 
+from src.advanced_ml.lda_gensim import (
+    LdaArtifacts,
+    coherence_for_model,
+    document_topic_matrix,
+    log_perplexity_on_corpus,
+    train_lda,
+)
 
-def train_lda_placeholder(corpus, num_topics: int = 10) -> None:
-    """Wire to gensim LdaModel; document EM, assumptions, coherence metrics."""
-    raise NotImplementedError("Implement LDA (or alternative) and document EM convergence.")
+__all__ = [
+    "LdaArtifacts",
+    "coherence_for_model",
+    "document_topic_matrix",
+    "log_perplexity_on_corpus",
+    "train_lda",
+]
