@@ -22,6 +22,7 @@ from src.advanced_ml.lda_gensim import (
     top_words_per_topic,
     train_lda,
 )
+from src.advanced_ml.lda_gridsearch import grid_search_lda
 from src.advanced_ml.temporal_lda import mean_topic_mixture_by_bin
 from src.baselines.temporal_windows import add_time_bin
 from src.data.preprocess import add_tokens_column
@@ -46,6 +47,9 @@ def run_part2(
     coherence: Literal["u_mass", "c_v"] = "u_mass",
     no_below: int = 1,
     no_above: float = 0.85,
+    grid_search: bool = False,
+    k_range: list[int] | None = None,
+    lemmatize: bool = False,
     output_dir: str | Path | None = None,
 ) -> dict[str, Any]:
     df = load_raw_stream(
@@ -59,7 +63,7 @@ def run_part2(
         end=end,
     )
     df = df.sort_values(time_col).reset_index(drop=True)
-    df = add_tokens_column(df, text_col=text_col, out_col="tokens")
+    df = add_tokens_column(df, text_col=text_col, out_col="tokens", lemmatize=lemmatize)
     df = add_time_bin(df, time_col=time_col, freq=window_freq, out_col="time_bin")
 
     texts = df["tokens"].tolist()
@@ -68,14 +72,34 @@ def run_part2(
     train_texts = [texts[i] for i in train_idx]
     test_texts = [texts[i] for i in test_idx]
 
-    artifacts = train_lda(
-        train_texts,
-        num_topics=num_topics,
-        passes=passes,
-        random_state=seed,
-        no_below=no_below,
-        no_above=no_above,
-    )
+    k_scores_df: pd.DataFrame | None = None
+    convergence_log: list[float] = []
+
+    if grid_search:
+        gs = grid_search_lda(
+            train_texts,
+            k_range=k_range or [4, 6, 8, 10, 12],
+            passes=passes,
+            random_state=seed,
+            no_below=no_below,
+            no_above=no_above,
+            coherence=coherence,
+            eval_corpus=test_texts if test_texts else None,
+        )
+        artifacts = gs.best_artifacts
+        num_topics = gs.best_k
+        k_scores_df = pd.DataFrame(gs.k_scores)
+        convergence_log = gs.convergence_log
+    else:
+        artifacts = train_lda(
+            train_texts,
+            num_topics=num_topics,
+            passes=passes,
+            random_state=seed,
+            no_below=no_below,
+            no_above=no_above,
+        )
+
     model, dictionary = artifacts.model, artifacts.dictionary
 
     test_corpus = bows_with_fixed_dictionary(test_texts, dictionary)
@@ -174,6 +198,8 @@ def run_part2(
         "topic_mix_by_window": mix_df,
         "topics": topics_df,
         "summary_metrics": summary,
+        "k_scores": k_scores_df,
+        "convergence_log": convergence_log,
     }
 
     if output_dir is not None:
@@ -182,5 +208,11 @@ def run_part2(
         mix_df.to_csv(od / "part2_topic_mix_by_window.csv", index=False)
         topics_df.to_csv(od / "part2_lda_top_words.csv", index=False)
         summary.to_csv(od / "part2_summary_metrics.csv", index=False)
+        if k_scores_df is not None:
+            k_scores_df.to_csv(od / "part2_k_grid_search.csv", index=False)
+        if convergence_log:
+            pd.DataFrame(
+                {"pass": range(len(convergence_log)), "log_perplexity": convergence_log}
+            ).to_csv(od / "part2_convergence.csv", index=False)
 
     return out
