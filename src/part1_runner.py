@@ -18,8 +18,9 @@ from src.baselines.temporal_windows import (
     aggregate_window_texts,
     window_strings_from_tokens,
 )
+from src.baselines.burst_detection import detect_all_bursts
 from src.baselines.tfidf_topics import tfidf_top_terms_per_window
-from src.data.preprocess import add_tokens_column
+from src.data.preprocess import add_tokens_column, corpus_statistics
 from src.evaluation.temporal_baseline_metrics import mean_adjacent_jaccard
 from src.pipeline_common import Source, load_raw_stream
 
@@ -40,6 +41,9 @@ def run_part1(
     n_docs: int = 800,
     start: str = "2024-01-01",
     end: str = "2024-03-01",
+    lemmatize: bool = False,
+    tfidf_ngram_range: tuple[int, int] = (1, 1),
+    burst_z_thresh: float = 1.5,
     output_dir: str | Path | None = None,
 ) -> dict[str, Any]:
     """
@@ -58,8 +62,9 @@ def run_part1(
         end=end,
     )
 
-    df = add_tokens_column(df, text_col=text_col, out_col="tokens")
+    df = add_tokens_column(df, text_col=text_col, out_col="tokens", lemmatize=lemmatize)
     df = add_time_bin(df, time_col=time_col, freq=window_freq, out_col="time_bin")
+    stats = corpus_statistics(df, tokens_col="tokens")
 
     freq_ranked = top_terms_per_time_bin(df, bin_col="time_bin", tokens_col="tokens", k=top_k)
     ordered_bins = list(freq_ranked.keys())
@@ -67,7 +72,9 @@ def run_part1(
 
     wtoks = aggregate_window_texts(df, bin_col="time_bin", tokens_col="tokens")
     wtext = window_strings_from_tokens(wtoks)
-    tfidf_ranked = tfidf_top_terms_per_window(wtext, top_k=top_k)
+    tfidf_ranked = tfidf_top_terms_per_window(
+        wtext, top_k=top_k, ngram_range=tfidf_ngram_range
+    )
     tfidf_terms_only = {b: _terms_only(tfidf_ranked.get(b, [])) for b in ordered_bins}
 
     j_freq = mean_adjacent_jaccard(ordered_bins, freq_terms_only)
@@ -115,10 +122,22 @@ def run_part1(
         ]
     )
 
+    global_top = [w for w, _ in freq_ranked.get(ordered_bins[0], [])][:top_k] if ordered_bins else []
+    all_top_terms = list({w for b in ordered_bins for w, _ in freq_ranked.get(b, [])})[:30]
+    bursts = detect_all_bursts(
+        df,
+        all_top_terms,
+        bin_col="time_bin",
+        tokens_col="tokens",
+        z_thresh=burst_z_thresh,
+    )
+
     out: dict[str, Any] = {
         "df": df,
+        "corpus_stats": stats,
         "freq_ranked": freq_ranked,
         "tfidf_ranked": tfidf_ranked,
+        "bursts": bursts,
         "summary_metrics": summary,
         "long_table": pd.DataFrame(long_rows),
     }
@@ -128,5 +147,8 @@ def run_part1(
         od.mkdir(parents=True, exist_ok=True)
         out["long_table"].to_csv(od / "part1_window_terms.csv", index=False)
         summary.to_csv(od / "part1_summary_metrics.csv", index=False)
+        pd.DataFrame([stats]).to_csv(od / "part1_corpus_stats.csv", index=False)
+        if not bursts.empty:
+            bursts.to_csv(od / "part1_bursts.csv", index=False)
 
     return out

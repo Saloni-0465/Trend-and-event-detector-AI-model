@@ -4,6 +4,9 @@ TF-IDF discriminative terms per time window.
 Each window is treated as one document (concatenated posts). High weight terms
 are frequent in that window relative to others — a standard strong baseline
 before LDA or embeddings.
+
+Supports unigrams and bigrams via `ngram_range` to capture multi-word concepts
+like "carbon_emissions" or "gpu benchmark."
 """
 
 from __future__ import annotations
@@ -20,11 +23,12 @@ def tfidf_top_terms_per_window(
     max_features: int = 4096,
     min_df: int = 1,
     max_df: float = 0.95,
+    ngram_range: tuple[int, int] = (1, 1),
 ) -> dict[pd.Timestamp, list[tuple[str, float]]]:
     """
     Return top_k terms per window by TF-IDF weight for that window's row.
 
-    Windows with very little text may return fewer than top_k non-zero terms.
+    Set ngram_range=(1,2) to include bigrams alongside unigrams.
     """
     if not window_to_text:
         return {}
@@ -37,6 +41,7 @@ def tfidf_top_terms_per_window(
         max_features=max_features,
         token_pattern=r"(?u)\b[a-z][a-z0-9']+\b",
         lowercase=True,
+        ngram_range=ngram_range,
     )
     X = vec.fit_transform(docs)
     names = vec.get_feature_names_out()
