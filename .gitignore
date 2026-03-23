@@ -34,16 +34,17 @@ mlruns/
 *.ckpt
 lightning_logs/
 
-# Data (keep structure; ignore large files — adjust as needed)
-data/raw/*
-!data/raw/.gitkeep
-data/processed/*
-!data/processed/.gitkeep
+# Data (large files — downloaded via scripts/download_data.py)
+data/raw/
+data/news_full.csv
+data/sample/*.csv
 
 # Secrets
 .env
-.env.*
-!.env.example
 
 # Reports (optional: remove if you want PDFs in repo)
 # *.pdf
+
+# Local-only presentation / report sources (do not push)
+docs/report_ieee.tex
+docs/video_script_10min.md
