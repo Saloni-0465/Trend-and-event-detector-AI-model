@@ -14,8 +14,10 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from src.data_utils import load_csv, tokenize_df, add_time_bins, corpus_stats
 import matplotlib.pyplot as plt
+import pandas as pd
+
+from src.data_utils import load_csv, tokenize_df, add_time_bins, corpus_stats
 
 DATA_PATH = "data/sample/news_2018_h1.csv"
 
@@ -38,13 +40,17 @@ def main():
         top_cats = df["category"].value_counts().head(6).index
         subset = df[df["category"].isin(top_cats)]
         ct = subset.groupby(["time_bin", "category"]).size().unstack(fill_value=0)
-        ct.plot.bar(stacked=True, figsize=(12, 5))
+        ct = ct.sort_index()
+        # String index avoids pandas Period/plot errors with some DatetimeIndex builds
+        ct.index = [pd.Timestamp(t).strftime("%Y-%m-%d") for t in ct.index]
+        ct.plot.bar(stacked=True, figsize=(12, 5), rot=45)
         plt.title("Top 6 categories over time")
         plt.ylabel("# articles")
+        plt.xlabel("time bin (week start)")
         plt.tight_layout()
         os.makedirs("docs", exist_ok=True)
         plt.savefig("docs/categories_over_time.png", dpi=120)
-        plt.show()
+        plt.close()
 
     df["doc_len"] = df["tokens"].apply(len)
     df["doc_len"].hist(bins=30, figsize=(7, 3))
@@ -52,7 +58,7 @@ def main():
     plt.xlabel("# tokens")
     plt.tight_layout()
     plt.savefig("docs/doc_lengths.png", dpi=120)
-    plt.show()
+    plt.close()
 
     print(f"Mean doc length: {df['doc_len'].mean():.1f}")
     print(f"Median doc length: {df['doc_len'].median():.1f}")

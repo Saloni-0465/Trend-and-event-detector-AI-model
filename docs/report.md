@@ -12,7 +12,12 @@ For initial experiments we work with a 6-month subset (Jan–Jun 2018) to keep r
 
 ### 1.1 Exploratory plots (EDA)
 
-Before choosing preprocessing, we inspect the sample with `python scripts/eda.py` (from the repo root, after `download_data.py`). That script writes two figures into `docs/`:
+Before choosing preprocessing, we inspect the sample with `python scripts/eda.py` (from the repo root, after `download_data.py`). That script creates **two PNG files** in `docs/`:
+
+- `docs/categories_over_time.png` — stacked bar chart of article counts per week for the six most common categories  
+- `docs/doc_lengths.png` — histogram of token counts per document after preprocessing  
+
+Those files **are not created by** `src.main`; they only exist after you run `eda.py` (or if someone commits them for you). Until then, the image links below will be broken in Markdown viewers.
 
 **Category mix over time** — stacked counts per week for the six most frequent editor categories. This shows that the stream is not static: different weeks emphasize different sections, which motivates time-binned baselines and drift metrics.
 
@@ -87,12 +92,18 @@ Results are from the 6-month 2018 subset. Exact numbers depend on the window siz
 
 ## Reproducibility
 
+**Core pipeline** (what you need whenever you run the project):
+
 ```bash
 pip install -r requirements.txt
 python scripts/download_data.py
-python scripts/eda.py          
 python -m src.main --mode all
 pytest tests/
 ```
 
-Commit `docs/categories_over_time.png` and `docs/doc_lengths.png` if you want them to show on GitHub next to this report.
+
+```bash
+python scripts/eda.py
+```
+
+If the PNGs are committed in `docs/`, readers see the figures without re-running EDA. Re-run `eda.py` only when those inputs change or the images are missing.
