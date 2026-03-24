@@ -8,3 +8,4 @@ sentence-transformers>=2.2
 nltk>=3.8
 tqdm>=4.66
 pytest>=7.4
+matplotlib>=3.7

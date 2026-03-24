@@ -10,6 +10,20 @@ We use the **News Category Dataset** from Kaggle (Rishabh Misra), containing ~21
 
 For initial experiments we work with a 6-month subset (Jan–Jun 2018) to keep runtimes manageable. The text field combines the headline and short description for richer content.
 
+### 1.1 Exploratory plots (EDA)
+
+Before choosing preprocessing, we inspect the sample with `python scripts/eda.py` (from the repo root, after `download_data.py`). That script writes two figures into `docs/`:
+
+**Category mix over time** — stacked counts per week for the six most frequent editor categories. This shows that the stream is not static: different weeks emphasize different sections, which motivates time-binned baselines and drift metrics.
+
+![Top six news categories by 7-day time bin](categories_over_time.png)
+
+**Document length (tokens)** — distribution after tokenization and stopword removal. Most headlines + descriptions are short; we avoid aggressive stemming because lengths are already modest.
+
+![Histogram of token counts per document](doc_lengths.png)
+
+*If the images do not render in your viewer, run `python scripts/eda.py` once so the PNG files exist next to this report, or open `docs/categories_over_time.png` and `docs/doc_lengths.png` directly.*
+
 ## 2. Preprocessing
 
 - Lowercasing, regex tokenization, stopword removal (sklearn's English list)
@@ -76,6 +90,9 @@ Results are from the 6-month 2018 subset. Exact numbers depend on the window siz
 ```bash
 pip install -r requirements.txt
 python scripts/download_data.py
+python scripts/eda.py          
 python -m src.main --mode all
 pytest tests/
 ```
+
+Commit `docs/categories_over_time.png` and `docs/doc_lengths.png` if you want them to show on GitHub next to this report.

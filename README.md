@@ -63,10 +63,9 @@ src/
   main.py          — CLI entry point
 scripts/
   download_data.py — download + preprocess Kaggle dataset
+  eda.py           — exploratory plots (run: python scripts/eda.py from repo root)
 tests/
   test_pipeline.py — unit tests
-notebooks/
-  eda.py           — exploratory data analysis
 docs/
   literature_review.md — background research
   report.md        — Phase 1 report
