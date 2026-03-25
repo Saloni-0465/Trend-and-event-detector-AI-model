@@ -4,7 +4,16 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.data_utils import tokenize, tokenize_df, add_time_bins, corpus_stats, load_csv, split_train_test
+from src.data_utils import (
+    tokenize,
+    tokenize_df,
+    add_time_bins,
+    corpus_stats,
+    load_csv,
+    split_train_test,
+    rebin_time_bins,
+    parse_extra_stopwords,
+)
 from src.baselines import frequency_top_terms, tfidf_top_terms
 from src.lda_model import train_lda, get_topic_words, get_perplexity, doc_topic_matrix
 from src.metrics import jaccard, mean_adjacent_jaccard, mean_adjacent_jsd, safe_silhouette
@@ -113,6 +122,44 @@ def test_tfidf_top_terms():
     df = add_time_bins(df, freq="14D")
     result = tfidf_top_terms(df, k=5)
     assert len(result) > 0
+
+
+def test_frequency_top_terms_extra_stop():
+    rows = []
+    base = pd.Timestamp("2018-01-01", tz="UTC")
+    for i in range(40):
+        rows.append(
+            {
+                "timestamp": base + pd.Timedelta(days=i),
+                "text": "said said election vote senate" if i % 2 == 0 else "election vote campaign poll",
+                "category": "POLITICS",
+            }
+        )
+    df = pd.DataFrame(rows)
+    df = tokenize_df(df)
+    df = add_time_bins(df, freq="7D")
+    raw = frequency_top_terms(df, k=5)
+    first_bin = sorted(raw.keys())[0]
+    assert "said" in [w for w, _ in raw[first_bin]]
+
+    extra = frozenset({"said"})
+    filtered = frequency_top_terms(df, k=5, extra_stop=extra)
+    assert "said" not in [w for w, _ in filtered[first_bin]]
+
+
+def test_rebin_time_bins_has_fewer_or_equal_bins():
+    df = _make_df(120)
+    df = tokenize_df(df)
+    df = add_time_bins(df, freq="7D")
+    n7 = df["time_bin"].nunique()
+    df14 = rebin_time_bins(df, "14D")
+    assert df14["time_bin"].nunique() <= n7
+
+
+def test_parse_extra_stopwords():
+    assert parse_extra_stopwords("none") == frozenset()
+    assert "said" in parse_extra_stopwords("default")
+    assert parse_extra_stopwords("foo,bar") == frozenset({"foo", "bar"})
 
 
 # --- lda ---

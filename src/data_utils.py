@@ -7,6 +7,68 @@ from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 
 STOP = frozenset(w.lower() for w in ENGLISH_STOP_WORDS)
 
+# Headline/news boilerplate (not in sklearn list) — optional extra filter for baselines
+NEWS_DOMAIN_STOPWORDS = frozenset(
+    {
+        "new",
+        "said",
+        "says",
+        "say",
+        "according",
+        "year",
+        "years",
+        "day",
+        "days",
+        "week",
+        "weeks",
+        "time",
+        "times",
+        "just",
+        "also",
+        "news",
+        "report",
+        "reports",
+        "source",
+        "sources",
+        "people",
+        "way",
+        "man",
+        "men",
+        "woman",
+        "women",
+        "many",
+        "much",
+        "still",
+        "even",
+        "may",
+        "well",
+        "including",
+        "today",
+        "yesterday",
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday",
+    }
+)
+
+
+def parse_extra_stopwords(spec: str) -> frozenset:
+    """
+    Parse --extra-stopwords: 'none' | 'default' | comma-separated words.
+
+    'default' uses NEWS_DOMAIN_STOPWORDS (headline boilerplate).
+    """
+    s = (spec or "none").strip().lower()
+    if s in ("", "none"):
+        return frozenset()
+    if s == "default":
+        return NEWS_DOMAIN_STOPWORDS
+    return frozenset(w.strip() for w in s.split(",") if w.strip())
+
 
 def load_csv(path, text_col="text", time_col="timestamp"):
     """Load a CSV with text and timestamp columns."""
@@ -45,6 +107,14 @@ def add_time_bins(df, time_col="timestamp", freq="7D"):
     df = df.copy()
     df["time_bin"] = pd.to_datetime(df[time_col], utc=True).dt.floor(freq)
     return df
+
+
+def rebin_time_bins(df, freq: str, time_col="timestamp"):
+    """Recompute ``time_bin`` (e.g. compare weekly vs biweekly without reloading CSV)."""
+    out = df.copy()
+    if "time_bin" in out.columns:
+        out = out.drop(columns=["time_bin"])
+    return add_time_bins(out, time_col=time_col, freq=freq)
 
 
 def corpus_stats(df):

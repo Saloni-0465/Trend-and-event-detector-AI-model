@@ -1,24 +1,32 @@
 """Frequency and TF-IDF baselines per time window."""
 
-import numpy as np
-import pandas as pd
+from __future__ import annotations
+
 from collections import Counter
+
+import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 
-def frequency_top_terms(df, k=15):
+def _filter_tokens(tokens, extra_stop: frozenset | None) -> list[str]:
+    if not extra_stop:
+        return list(tokens)
+    return [t for t in tokens if t not in extra_stop]
+
+
+def frequency_top_terms(df, k=15, extra_stop: frozenset | None = None):
     """Top-k terms by count in each time bin."""
     results = {}
     for bin_val in sorted(df["time_bin"].unique()):
         mask = df["time_bin"] == bin_val
         counter = Counter()
         for toks in df.loc[mask, "tokens"]:
-            counter.update(toks)
+            counter.update(_filter_tokens(toks, extra_stop))
         results[bin_val] = counter.most_common(k)
     return results
 
 
-def tfidf_top_terms(df, k=15):
+def tfidf_top_terms(df, k=15, extra_stop: frozenset | None = None):
     """Top-k TF-IDF terms per time bin (each bin = one pseudo-document)."""
     bins = sorted(df["time_bin"].unique())
     docs = []
@@ -26,7 +34,7 @@ def tfidf_top_terms(df, k=15):
         mask = df["time_bin"] == b
         all_tokens = []
         for toks in df.loc[mask, "tokens"]:
-            all_tokens.extend(toks)
+            all_tokens.extend(_filter_tokens(toks, extra_stop))
         docs.append(" ".join(all_tokens))
 
     if not docs:

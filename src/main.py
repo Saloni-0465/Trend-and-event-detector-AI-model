@@ -16,6 +16,8 @@ from src.data_utils import (
     add_time_bins,
     corpus_stats,
     split_train_test,
+    rebin_time_bins,
+    parse_extra_stopwords,
 )
 from src.baselines import frequency_top_terms, tfidf_top_terms
 from src.lda_model import train_lda, get_topic_words, get_perplexity, get_coherence, doc_topic_matrix
@@ -57,31 +59,69 @@ def print_split(train_df, test_df, args):
     print()
 
 
-def run_baselines(train_df, test_df, top_k=15):
-    print("\n=== BASELINES (frequency + TF-IDF) ===")
+def _run_baselines_single_window(
+    train_df,
+    test_df,
+    *,
+    top_k,
+    extra_stop,
+    window_label: str,
+):
+    """One baseline pass for a given time-binning (train/test already split)."""
+    print(f"\n=== BASELINES (frequency + TF-IDF) — window={window_label} ===")
 
     for name, part in (("train", train_df), ("test", test_df)):
         if len(part) == 0:
             print(f"\n{name}: (no documents in this period)")
             continue
-        freq = frequency_top_terms(part, k=top_k)
-        tfidf = tfidf_top_terms(part, k=top_k)
+        freq = frequency_top_terms(part, k=top_k, extra_stop=extra_stop)
+        tfidf = tfidf_top_terms(part, k=top_k, extra_stop=extra_stop)
         bins = sorted(freq.keys())
         if len(bins) < 2:
             print(f"\n{name}: only one time bin — Jaccard N/A")
-            continue
-        freq_terms = {b: [w for w, _ in freq[b]] for b in bins}
-        j = mean_adjacent_jaccard(bins, freq_terms)
-        print(f"\n{name}: adjacent-window Jaccard (freq top terms): {j:.3f}")
+        else:
+            freq_terms = {b: [w for w, _ in freq[b]] for b in bins}
+            j = mean_adjacent_jaccard(bins, freq_terms)
+            print(f"\n{name}: adjacent-window Jaccard (freq top terms): {j:.3f}")
 
     if len(test_df) > 0:
-        freq = frequency_top_terms(test_df, k=top_k)
-        tfidf = tfidf_top_terms(test_df, k=top_k)
+        freq = frequency_top_terms(test_df, k=top_k, extra_stop=extra_stop)
+        tfidf = tfidf_top_terms(test_df, k=top_k, extra_stop=extra_stop)
         bins = sorted(freq.keys())
         for b in bins[:2]:
             print(f"\n  Test window {b}:")
             print("    Top freq:", [w for w, _ in freq[b][:5]])
             print("    Top tf-idf:", [w for w, _ in tfidf.get(b, [])[:5]])
+
+
+def run_baselines(
+    train_df,
+    test_df,
+    top_k=15,
+    extra_stop=None,
+    compare_windows=False,
+    primary_window="7D",
+):
+    """Optional extra stopwords for counts; optional 7D vs 14D rebin for baselines only."""
+    if compare_windows:
+        for freq, title in (("7D", "7D"), ("14D", "14D")):
+            tr = rebin_time_bins(train_df, freq)
+            te = rebin_time_bins(test_df, freq)
+            _run_baselines_single_window(
+                tr,
+                te,
+                top_k=top_k,
+                extra_stop=extra_stop,
+                window_label=title,
+            )
+    else:
+        _run_baselines_single_window(
+            train_df,
+            test_df,
+            top_k=top_k,
+            extra_stop=extra_stop,
+            window_label=primary_window,
+        )
 
 
 def run_lda(train_df, test_df, num_topics=6, passes=10, seed=42):
@@ -218,7 +258,20 @@ def main():
         default=DEFAULT_TEST_END,
         help="Test interval end (exclusive)",
     )
+    parser.add_argument(
+        "--extra-stopwords",
+        type=str,
+        default="none",
+        help="Baselines only: 'none' | 'default' (headline boilerplate) | comma-separated words",
+    )
+    parser.add_argument(
+        "--compare-baseline-windows",
+        action="store_true",
+        help="Run baselines for 7D and 14D (weekly vs biweekly); LDA/embeddings still use --window",
+    )
     args = parser.parse_args()
+
+    extra_stop = parse_extra_stopwords(args.extra_stopwords)
 
     df = prepare_data(args)
     train_df, test_df = split_train_test(
@@ -231,7 +284,13 @@ def main():
     print_split(train_df, test_df, args)
 
     if args.mode in ("baselines", "all"):
-        run_baselines(train_df, test_df)
+        run_baselines(
+            train_df,
+            test_df,
+            extra_stop=extra_stop,
+            compare_windows=args.compare_baseline_windows,
+            primary_window=args.window,
+        )
     if args.mode in ("lda", "all"):
         run_lda(train_df, test_df, num_topics=args.num_topics, seed=args.seed)
     if args.mode in ("embeddings", "all"):
