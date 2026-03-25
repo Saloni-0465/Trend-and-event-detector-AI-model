@@ -4,10 +4,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.data_utils import tokenize, tokenize_df, add_time_bins, corpus_stats, load_csv
+from src.data_utils import tokenize, tokenize_df, add_time_bins, corpus_stats, load_csv, split_train_test
 from src.baselines import frequency_top_terms, tfidf_top_terms
 from src.lda_model import train_lda, get_topic_words, get_perplexity, doc_topic_matrix
-from src.metrics import jaccard, mean_adjacent_jaccard, mean_adjacent_jsd
+from src.metrics import jaccard, mean_adjacent_jaccard, mean_adjacent_jsd, safe_silhouette
 
 
 def _make_df(n=60):
@@ -62,6 +62,28 @@ def test_corpus_stats():
     st = corpus_stats(df)
     assert st["n_docs"] == 20
     assert st["vocab_size"] > 0
+
+
+def test_split_train_test():
+    rows = []
+    base = pd.Timestamp("2018-01-01", tz="UTC")
+    for i in range(180):
+        rows.append(
+            {
+                "timestamp": base + pd.Timedelta(days=i),
+                "text": f"word{i % 5} election vote news",
+                "category": "POLITICS",
+            }
+        )
+    df = pd.DataFrame(rows)
+    df = tokenize_df(df)
+    df = add_time_bins(df, freq="14D")
+    tr, te = split_train_test(
+        df, "2018-01-01", "2018-05-01", "2018-05-01", "2018-07-01"
+    )
+    assert len(tr) > 0 and len(te) > 0
+    assert tr["timestamp"].max() < pd.Timestamp("2018-05-01", tz="UTC")
+    assert te["timestamp"].min() >= pd.Timestamp("2018-05-01", tz="UTC")
 
 
 def test_load_csv(tmp_path):
@@ -125,10 +147,18 @@ def test_mean_adjacent_jsd():
     assert mean_adjacent_jsd(bins, [p, q]) == pytest.approx(0.0, abs=1e-6)
 
 
+def test_safe_silhouette():
+    X = np.random.randn(30, 4)
+    y = np.array([0] * 15 + [1] * 15)
+    s = safe_silhouette(X, y)
+    assert -1 <= s <= 1
+    assert np.isnan(safe_silhouette(X, np.zeros(30)))
+
+
 # --- embeddings (no model download, just clustering) ---
 
 def test_find_best_k_and_cluster():
-    from src.embeddings import find_best_k, cluster
+    from src.embeddings import find_best_k, cluster, cluster_time_split
     X = np.random.randn(50, 16).astype(np.float32)
     best_k, scores = find_best_k(X, k_min=2, k_max=5)
     assert 2 <= best_k <= 5
@@ -136,3 +166,8 @@ def test_find_best_k_and_cluster():
     labels, km = cluster(X, best_k)
     assert len(labels) == 50
     assert len(np.unique(labels)) == best_k
+
+    X_tr, X_te = X[:30], X[30:]
+    lab, km2 = cluster_time_split(X_tr, X_te, best_k)
+    assert len(lab) == 50
+    assert len(np.unique(lab[:30])) <= best_k

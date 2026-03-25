@@ -4,6 +4,7 @@ Simple evaluation metrics (easy to explain in viva).
 
 import numpy as np
 from scipy.spatial.distance import jensenshannon
+from sklearn.metrics import silhouette_score
 
 
 def jaccard(a, b):
@@ -36,3 +37,10 @@ def mean_adjacent_jsd(bins, vectors):
         q = np.asarray(vectors[i + 1], dtype=float)
         dists.append(float(jensenshannon(p, q)))
     return float(np.mean(dists))
+
+
+def safe_silhouette(X, labels):
+    """Silhouette score; nan if fewer than 2 clusters or too few points."""
+    if len(X) < 2 or len(np.unique(labels)) < 2:
+        return float("nan")
+    return float(silhouette_score(X, labels))

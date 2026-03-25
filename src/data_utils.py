@@ -57,3 +57,28 @@ def corpus_stats(df):
         "total_tokens": len(all_tokens),
         "mean_length": round(float(np.mean(lengths)), 1),
     }
+
+
+def split_train_test(
+    df,
+    train_start,
+    train_end_excl,
+    test_start,
+    test_end_excl,
+    time_col="timestamp",
+):
+    """
+    Chronological train/test split. All end boundaries are exclusive.
+
+    Example (default for 2018 H1 sample): train Jan–Apr, test May–Jun.
+    """
+    df = df.sort_values(time_col).reset_index(drop=True)
+    ts = pd.to_datetime(df[time_col], utc=True)
+    t_tr0 = pd.Timestamp(train_start, tz="UTC")
+    t_tr1 = pd.Timestamp(train_end_excl, tz="UTC")
+    t_te0 = pd.Timestamp(test_start, tz="UTC")
+    t_te1 = pd.Timestamp(test_end_excl, tz="UTC")
+
+    train_df = df[(ts >= t_tr0) & (ts < t_tr1)].copy()
+    test_df = df[(ts >= t_te0) & (ts < t_te1)].copy()
+    return train_df, test_df

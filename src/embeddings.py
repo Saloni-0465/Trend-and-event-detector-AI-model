@@ -47,3 +47,12 @@ def cluster(X, k, seed=42):
     """Run K-Means with given k on all rows. Returns labels for X."""
     km = KMeans(n_clusters=k, random_state=seed, n_init="auto")
     return km.fit_predict(X), km
+
+
+def cluster_time_split(X_train, X_test, k, seed=42):
+    """Fit K-Means on train embeddings only; assign train + test labels."""
+    km = KMeans(n_clusters=k, random_state=seed, n_init="auto")
+    y_train = km.fit_predict(X_train)
+    y_test = km.predict(X_test)
+    labels = np.concatenate([y_train, y_test])
+    return labels, km

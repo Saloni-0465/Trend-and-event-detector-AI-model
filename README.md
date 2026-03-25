@@ -43,6 +43,11 @@ python -m src.main --mode embeddings
 
 # use full dataset instead of 6-month subset
 python -m src.main --mode all --csv-path data/news_full.csv
+
+# custom chronological split (ISO dates; end dates exclusive)
+python -m src.main --mode all \
+  --train-start 2018-01-01 --train-end 2018-05-01 \
+  --test-start 2018-05-01 --test-end 2018-07-01
 ```
 
 ## Tests

@@ -35,6 +35,19 @@ Those files **are not created by** `src.main`; they only exist after you run `ed
 - Short tokens (< 2 chars) dropped
 - No stemming/lemmatization — headlines are short and already pretty clean
 
+### 2.1 Chronological train / test split
+
+All three model paths use the **same** time-based split so metrics are comparable and models are not fit on “future” news when we score test behavior.
+
+- **Default (2018 H1 sample):** train = **[2018-01-01, 2018-05-01)** (Jan–Apr), test = **[2018-05-01, 2018-07-01)** (May–Jun). End dates are **exclusive**.
+- Override via CLI: `--train-start`, `--train-end`, `--test-start`, `--test-end` (ISO dates).
+
+**Baselines:** Jaccard for **train** and **test** separately (adjacent windows within each period). Example top terms are from the **test** period.
+
+**LDA:** Trained on **train** only. **Train** and **test** log-perplexity; $u\_mass$ coherence on **train**; topic-mix **JSD** on **test** time bins only.
+
+**Embeddings:** *k* from silhouette on **train**; K-Means fit on **train**, **test** labels via `predict`; silhouette on **train** and **test**.
+
 ## 3. Methods
 
 ### 3.1 Baselines
@@ -42,21 +55,21 @@ Those files **are not created by** `src.main`; they only exist after you run `ed
 - **Frequency**: count top-k terms per 7-day window
 - **TF-IDF**: treat each window as one document, rank terms by TF-IDF weight
 
-We measure lexical drift between adjacent windows using Jaccard similarity on the top-15 term sets.
+We measure lexical drift between adjacent windows using Jaccard similarity on the top-15 term sets (computed per split).
 
 ### 3.2 LDA
 
-- Gensim's `LdaModel` with `alpha=auto`, `eta=auto` (Phase 1: fit on the **full** corpus after sorting by time — simple and easy to explain)
-- Evaluate: gensim log-perplexity on that corpus and u_mass coherence
-- Aggregate doc-topic distributions per time bin and compute JSD between adjacent bins
+- Gensim's `LdaModel` with `alpha=auto`, `eta=auto`, fit on **training** documents only
+- **Train** and **test** log-perplexity; $u\_mass$ coherence on **train**
+- Mean document–topic vector per **test** time bin; **JSD** between adjacent **test** bins
 
-LDA treats each document as a mixture of topics and each topic as a distribution over words. Perplexity is a quick sanity check; coherence checks if topic words co-occur in the corpus (Mimno et al.).
+LDA treats each document as a mixture of topics and each topic as a distribution over words. Test perplexity checks fit on **held-out** time; coherence checks interpretability (Mimno et al.).
 
-### 3.3 Embeddings + Clustering (optional demo)
+### 3.3 Embeddings + Clustering
 
-- Encode all texts with `all-MiniLM-L6-v2` (frozen sentence transformer)
-- Pick *k* with best silhouette on the embedding matrix (Phase 1 uses a small range, e.g. k=2..6)
-- KMeans on all points — kept minimal for Phase 1; a stricter time-based train/test split can come in a later phase
+- Encode with `all-MiniLM-L6-v2` (frozen sentence transformer)
+- *k* from best silhouette on **train** (e.g. k in 2..6)
+- K-Means on **train** only; **test** cluster assignments via `predict`; silhouette on train and test
 
 ## 4. Results
 
@@ -64,10 +77,12 @@ Results are from the 6-month 2018 subset. Exact numbers depend on the window siz
 
 | Metric | Baselines | LDA | Embeddings |
 |--------|-----------|-----|------------|
-| Jaccard (adjacent windows) | ~0.4–0.6 | — | — |
-| Coherence (u_mass) | — | ~ -2 to -5 | — |
-| Perplexity (log, same corpus) | — | ~ -5 to -7 | — |
-| Chosen *k* (silhouette) | — | — | 2–6 (data-dependent) |
+| Jaccard (train / test windows) | per split | — | — |
+| Coherence (u_mass, train) | — | (typical negative u_mass range) | — |
+| Perplexity (log, train / test) | — | both reported | — |
+| Topic JSD (test bins) | — | reported | — |
+| Silhouette (train / test) | — | — | both reported |
+| Chosen *k* | — | — | from train silhouette |
 
 ## 5. Discussion
 
