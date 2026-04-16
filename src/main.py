@@ -8,6 +8,7 @@ Default: train 2018-01-01 .. 2018-05-01 (exclusive), test 2018-05-01 .. 2018-07-
 import os
 import argparse
 
+import numpy as np
 import pandas as pd
 
 from src.data_utils import (
@@ -22,6 +23,11 @@ from src.data_utils import (
 from src.baselines import frequency_top_terms, tfidf_top_terms
 from src.lda_model import train_lda, get_topic_words, get_perplexity, get_coherence, doc_topic_matrix
 from src.metrics import mean_adjacent_jaccard, mean_adjacent_jsd, safe_silhouette
+from src.events import (
+    detect_spike_events,
+    jsd_adjacent_from_topic_means,
+    lexical_jaccard_drift_from_top_terms,
+)
 
 DEFAULT_CSV = os.path.join("data", "sample", "news_2018_h1.csv")
 
@@ -223,11 +229,105 @@ def run_embeddings(train_df, test_df, k_min=2, k_max=6, seed=42):
     return best_k
 
 
+def run_events(
+    train_df,
+    test_df,
+    *,
+    num_topics=6,
+    passes=10,
+    seed=42,
+    extra_stop=None,
+    event_percentile=90.0,
+    event_top_k_terms=15,
+    lda_driver_topics=3,
+):
+    print("\n=== EVENT DETECTION (simple spike baseline) ===")
+    if len(test_df) == 0:
+        print("No test documents — skip events.")
+        return
+
+    # ---- 1) Lexical events from top-term Jaccard drift ----
+    print(f"\n[Lexical] Using top-{event_top_k_terms} freq terms + adjacent Jaccard drift")
+    freq_terms_by_bin = frequency_top_terms(test_df, k=event_top_k_terms, extra_stop=extra_stop)
+    drift_scores, transitions = lexical_jaccard_drift_from_top_terms(
+        freq_terms_by_bin, top_k=event_top_k_terms
+    )
+    if not drift_scores:
+        print("Not enough test bins for lexical events.")
+    else:
+        events = detect_spike_events(
+            drift_scores, transitions, percentile=event_percentile
+        )
+        print(f"  Drift threshold: {event_percentile}th percentile; events: {len(events)}")
+        for e in events:
+            b0, b1 = transitions[e.spike_transition_index]
+            t0 = freq_terms_by_bin.get(b0, [])[:event_top_k_terms]
+            t1 = freq_terms_by_bin.get(b1, [])[:event_top_k_terms]
+            prev_set = {w for w, _ in t0}
+            next_set = {w for w, _ in t1}
+            new_terms = [w for w, _ in t1 if w not in prev_set][:8]
+            dropped_terms = [w for w, _ in t0 if w not in next_set][:8]
+            print(
+                f"  Event {e.event_id}: {b0} -> {b1} | max_drift={e.max_score:.3f} | "
+                f"new={new_terms} | dropped={dropped_terms}"
+            )
+
+    # ---- 2) LDA events from topic-mixture JSD drift ----
+    if len(train_df) == 0:
+        print("\n[LDA] No training documents — skip LDA events.")
+        return
+
+    print(f"\n[LDA] Training LDA on train, detecting spikes in adjacent topic-mixture JSD")
+    train_texts = train_df.sort_values("timestamp")["tokens"].tolist()
+    test_texts = test_df.sort_values("timestamp")["tokens"].tolist()
+
+    model, dictionary, train_corpus = train_lda(
+        train_texts, num_topics=num_topics, passes=passes, seed=seed
+    )
+
+    test_corpus = [dictionary.doc2bow(t, allow_update=False) for t in test_texts]
+    if not test_corpus:
+        print("No test corpus for LDA — skip LDA events.")
+        return
+
+    theta_test = doc_topic_matrix(model, test_corpus)
+    bins = sorted(test_df.sort_values("timestamp")["time_bin"].unique())
+    if len(bins) < 2:
+        print("Not enough test bins for LDA events.")
+        return
+
+    # Mean topic mixture per time bin.
+    bin_means: list[np.ndarray] = []
+    test_df_sorted = test_df.sort_values("timestamp").reset_index(drop=True)
+    for b in bins:
+        mask = test_df_sorted["time_bin"] == b
+        bin_means.append(theta_test[mask.values].mean(axis=0))
+
+    dists = jsd_adjacent_from_topic_means(bin_means)
+    transitions_lda = [(bins[i], bins[i + 1]) for i in range(len(bins) - 1)]
+    events_lda = detect_spike_events(dists, transitions_lda, percentile=event_percentile)
+    print(f"  Drift threshold: {event_percentile}th percentile; events: {len(events_lda)}")
+    for e in events_lda:
+        prev_vec = bin_means[e.spike_transition_index]
+        next_vec = bin_means[e.spike_transition_index + 1]
+        deltas = np.abs(next_vec - prev_vec)
+        top_topic_ids = list(np.argsort(-deltas)[:lda_driver_topics])
+        top_topics = []
+        for tid in top_topic_ids:
+            words = [w for w, _ in model.show_topic(tid, topn=5)]
+            top_topics.append({"topic_id": int(tid), "words": words})
+        b0, b1 = transitions_lda[e.spike_transition_index]
+        print(
+            f"  Event {e.event_id}: {b0} -> {b1} | max_drift={e.max_score:.3f} | "
+            f"top_topics={top_topics}"
+        )
+
+
 def main():
     parser = argparse.ArgumentParser(description="Trend detector — Phase 1")
     parser.add_argument(
         "--mode",
-        choices=["baselines", "lda", "embeddings", "all"],
+        choices=["baselines", "lda", "embeddings", "events", "all"],
         default="all",
     )
     parser.add_argument("--csv-path", type=str, default=None)
@@ -269,6 +369,30 @@ def main():
         action="store_true",
         help="Run baselines for 7D and 14D (weekly vs biweekly); LDA/embeddings still use --window",
     )
+    parser.add_argument(
+        "--event-percentile",
+        type=float,
+        default=90.0,
+        help="Spike detector threshold as percentile of adjacent drift scores",
+    )
+    parser.add_argument(
+        "--event-top-k-terms",
+        type=int,
+        default=15,
+        help="Top terms per bin for lexical event detection (frequency-based)",
+    )
+    parser.add_argument(
+        "--lda-passes",
+        type=int,
+        default=10,
+        help="LDA passes for event detection LDA model",
+    )
+    parser.add_argument(
+        "--lda-driver-topics",
+        type=int,
+        default=3,
+        help="How many topics to list as drivers per LDA event",
+    )
     args = parser.parse_args()
 
     extra_stop = parse_extra_stopwords(args.extra_stopwords)
@@ -295,6 +419,18 @@ def main():
         run_lda(train_df, test_df, num_topics=args.num_topics, seed=args.seed)
     if args.mode in ("embeddings", "all"):
         run_embeddings(train_df, test_df, seed=args.seed)
+    if args.mode in ("events",):
+        run_events(
+            train_df,
+            test_df,
+            num_topics=args.num_topics,
+            passes=args.lda_passes,
+            seed=args.seed,
+            extra_stop=extra_stop,
+            event_percentile=args.event_percentile,
+            event_top_k_terms=args.event_top_k_terms,
+            lda_driver_topics=args.lda_driver_topics,
+        )
 
 
 if __name__ == "__main__":
