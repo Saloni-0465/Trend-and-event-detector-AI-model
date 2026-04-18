@@ -12,9 +12,10 @@ from "trend metrics" to "event windows" quickly.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Iterable
+from typing import Any
 
 import numpy as np
+import pandas as pd
 from scipy.spatial.distance import jensenshannon
 
 from src.metrics import jaccard
@@ -139,4 +140,94 @@ def lexical_jaccard_drift_from_top_terms(
         scores.append(float(jaccard(t0, t1)))
         transitions.append((b0, b1))
     return scores, transitions
+
+
+def _dominant_category_in_range(
+    test_df: pd.DataFrame,
+    *,
+    start_bin: Any,
+    end_bin: Any,
+) -> str | None:
+    if "category" not in test_df.columns or test_df.empty:
+        return None
+
+    ts = pd.to_datetime(test_df["time_bin"], utc=True, errors="coerce")
+    tb0 = pd.to_datetime(start_bin, utc=True)
+    tb1 = pd.to_datetime(end_bin, utc=True)
+    mask = (ts >= tb0) & (ts <= tb1)
+    cats = test_df.loc[mask, "category"].dropna()
+    if cats.empty:
+        return None
+
+    counts = cats.value_counts()
+    top_count = counts.max()
+    tied = sorted([c for c, n in counts.items() if n == top_count])
+    return tied[0] if tied else None
+
+
+def label_events(
+    events_out: dict[str, list[dict[str, Any]]],
+    test_df: pd.DataFrame,
+    *,
+    include_category: bool = True,
+    lexical_label_top_terms: int = 6,
+    lda_label_top_words: int = 6,
+) -> dict[str, list[dict[str, Any]]]:
+    """Attach a human-readable label to each detected event.
+
+    For lexical events: uses `drivers.new_terms` / `drivers.dropped_terms`.
+    For LDA events: uses `drivers.top_topics[*].words`.
+    Optionally adds the dominant dataset `category` within the event window.
+    """
+    labeled = {"lexical": [], "lda": []}
+
+    for ev in events_out.get("lexical", []):
+        new_terms = ev.get("drivers", {}).get("new_terms") or []
+        dropped_terms = ev.get("drivers", {}).get("dropped_terms") or []
+        chosen = new_terms[:lexical_label_top_terms] or dropped_terms[:lexical_label_top_terms]
+        label = "Lexical change: " + (" ".join(chosen) if chosen else "topic drift")
+
+        cat = None
+        if include_category:
+            cat = _dominant_category_in_range(
+                test_df, start_bin=ev["start_bin"], end_bin=ev["end_bin"]
+            )
+
+        labeled["lexical"].append(
+            {
+                **ev,
+                "label": label,
+                "dominant_category": cat,
+            }
+        )
+
+    for ev in events_out.get("lda", []):
+        top_topics = ev.get("drivers", {}).get("top_topics") or []
+        words: list[str] = []
+        for t in top_topics:
+            for w in (t.get("words") or []):
+                if w not in words:
+                    words.append(w)
+                if len(words) >= lda_label_top_words:
+                    break
+            if len(words) >= lda_label_top_words:
+                break
+
+        label = "Topic-mixture change: " + (" ".join(words) if words else "topic drift")
+
+        cat = None
+        if include_category:
+            cat = _dominant_category_in_range(
+                test_df, start_bin=ev["start_bin"], end_bin=ev["end_bin"]
+            )
+
+        labeled["lda"].append(
+            {
+                **ev,
+                "label": label,
+                "dominant_category": cat,
+            }
+        )
+
+    return labeled
 
