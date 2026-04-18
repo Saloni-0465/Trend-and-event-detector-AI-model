@@ -27,6 +27,7 @@ from src.events import (
     detect_spike_events,
     jsd_adjacent_from_topic_means,
     lexical_jaccard_drift_from_top_terms,
+    label_events,
 )
 
 DEFAULT_CSV = os.path.join("data", "sample", "news_2018_h1.csv")
@@ -241,10 +242,24 @@ def run_events(
     event_top_k_terms=15,
     lda_driver_topics=3,
 ):
+    """
+    Run a simple spike-based event detector on the TEST period.
+
+    Returns a structured event list so it can be reused downstream for
+    labeling/evaluation/plotting.
+
+    Output format:
+      {
+        "lexical": [{"start_bin": ..., "end_bin": ..., "score": ..., "drivers": {...}}, ...],
+        "lda": [{"start_bin": ..., "end_bin": ..., "score": ..., "drivers": {...}}, ...],
+      }
+    """
+    events_out = {"lexical": [], "lda": []}
+
     print("\n=== EVENT DETECTION (simple spike baseline) ===")
     if len(test_df) == 0:
         print("No test documents — skip events.")
-        return
+        return events_out
 
     # ---- 1) Lexical events from top-term Jaccard drift ----
     print(f"\n[Lexical] Using top-{event_top_k_terms} freq terms + adjacent Jaccard drift")
@@ -255,9 +270,7 @@ def run_events(
     if not drift_scores:
         print("Not enough test bins for lexical events.")
     else:
-        events = detect_spike_events(
-            drift_scores, transitions, percentile=event_percentile
-        )
+        events = detect_spike_events(drift_scores, transitions, percentile=event_percentile)
         print(f"  Drift threshold: {event_percentile}th percentile; events: {len(events)}")
         for e in events:
             b0, b1 = transitions[e.spike_transition_index]
@@ -267,6 +280,20 @@ def run_events(
             next_set = {w for w, _ in t1}
             new_terms = [w for w, _ in t1 if w not in prev_set][:8]
             dropped_terms = [w for w, _ in t0 if w not in next_set][:8]
+
+            events_out["lexical"].append(
+                {
+                    "event_id": e.event_id,
+                    "start_bin": b0,
+                    "end_bin": b1,
+                    "score": float(e.max_score),
+                    "drivers": {
+                        "new_terms": new_terms,
+                        "dropped_terms": dropped_terms,
+                    },
+                }
+            )
+
             print(
                 f"  Event {e.event_id}: {b0} -> {b1} | max_drift={e.max_score:.3f} | "
                 f"new={new_terms} | dropped={dropped_terms}"
@@ -275,7 +302,7 @@ def run_events(
     # ---- 2) LDA events from topic-mixture JSD drift ----
     if len(train_df) == 0:
         print("\n[LDA] No training documents — skip LDA events.")
-        return
+        return events_out
 
     print(f"\n[LDA] Training LDA on train, detecting spikes in adjacent topic-mixture JSD")
     train_texts = train_df.sort_values("timestamp")["tokens"].tolist()
@@ -288,13 +315,13 @@ def run_events(
     test_corpus = [dictionary.doc2bow(t, allow_update=False) for t in test_texts]
     if not test_corpus:
         print("No test corpus for LDA — skip LDA events.")
-        return
+        return events_out
 
     theta_test = doc_topic_matrix(model, test_corpus)
     bins = sorted(test_df.sort_values("timestamp")["time_bin"].unique())
     if len(bins) < 2:
         print("Not enough test bins for LDA events.")
-        return
+        return events_out
 
     # Mean topic mixture per time bin.
     bin_means: list[np.ndarray] = []
@@ -317,10 +344,25 @@ def run_events(
             words = [w for w, _ in model.show_topic(tid, topn=5)]
             top_topics.append({"topic_id": int(tid), "words": words})
         b0, b1 = transitions_lda[e.spike_transition_index]
+
+        events_out["lda"].append(
+            {
+                "event_id": e.event_id,
+                "start_bin": b0,
+                "end_bin": b1,
+                "score": float(e.max_score),
+                "drivers": {
+                    "top_topics": top_topics,
+                },
+            }
+        )
+
         print(
             f"  Event {e.event_id}: {b0} -> {b1} | max_drift={e.max_score:.3f} | "
             f"top_topics={top_topics}"
         )
+
+    return events_out
 
 
 def main():
@@ -420,7 +462,7 @@ def main():
     if args.mode in ("embeddings", "all"):
         run_embeddings(train_df, test_df, seed=args.seed)
     if args.mode in ("events",):
-        run_events(
+        events_out = run_events(
             train_df,
             test_df,
             num_topics=args.num_topics,
@@ -431,6 +473,19 @@ def main():
             event_top_k_terms=args.event_top_k_terms,
             lda_driver_topics=args.lda_driver_topics,
         )
+
+        labeled = label_events(events_out, test_df)
+        print("\n=== Event labels (simple, explainable) ===")
+        for ev in labeled.get("lexical", []):
+            print(
+                f"  [Lexical] {ev['start_bin']} -> {ev['end_bin']} | "
+                f"score={ev['score']:.3f} | label={ev['label']} | category={ev['dominant_category']}"
+            )
+        for ev in labeled.get("lda", []):
+            print(
+                f"  [LDA] {ev['start_bin']} -> {ev['end_bin']} | "
+                f"score={ev['score']:.3f} | label={ev['label']} | category={ev['dominant_category']}"
+            )
 
 
 if __name__ == "__main__":
