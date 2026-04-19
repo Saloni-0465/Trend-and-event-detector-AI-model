@@ -16,7 +16,14 @@ from src.data_utils import (
 )
 from src.baselines import frequency_top_terms, tfidf_top_terms
 from src.lda_model import train_lda, get_topic_words, get_perplexity, doc_topic_matrix
-from src.metrics import jaccard, mean_adjacent_jaccard, mean_adjacent_jsd, safe_silhouette
+from src.metrics import (
+    jaccard,
+    mean_adjacent_jaccard,
+    mean_adjacent_jsd,
+    safe_silhouette,
+    cluster_category_alignment,
+    mean_adjacent_cosine_distance,
+)
 
 
 def _make_df(n=60):
@@ -200,6 +207,20 @@ def test_safe_silhouette():
     s = safe_silhouette(X, y)
     assert -1 <= s <= 1
     assert np.isnan(safe_silhouette(X, np.zeros(30)))
+
+
+def test_cluster_category_alignment_permutation_invariant():
+    y = np.array([0, 0, 1, 1, 2, 2])
+    pred = np.array([2, 2, 0, 0, 1, 1])  # same partition, remapped ids
+    nmi, ari = cluster_category_alignment(y, pred)
+    assert nmi == pytest.approx(1.0)
+    assert ari == pytest.approx(1.0)
+
+
+def test_mean_adjacent_cosine_distance_orthogonal():
+    vecs = [np.array([1.0, 0.0]), np.array([0.0, 1.0])]
+    d = mean_adjacent_cosine_distance(vecs)
+    assert d == pytest.approx(1.0)
 
 
 # --- embeddings (no model download, just clustering) ---
