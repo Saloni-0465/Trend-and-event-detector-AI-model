@@ -22,7 +22,13 @@ from src.data_utils import (
 )
 from src.baselines import frequency_top_terms, tfidf_top_terms
 from src.lda_model import train_lda, get_topic_words, get_perplexity, get_coherence, doc_topic_matrix
-from src.metrics import mean_adjacent_jaccard, mean_adjacent_jsd, safe_silhouette
+from src.metrics import (
+    mean_adjacent_jaccard,
+    mean_adjacent_jsd,
+    safe_silhouette,
+    cluster_category_alignment,
+    mean_adjacent_cosine_distance,
+)
 from src.events import (
     detect_spike_events,
     jsd_adjacent_from_topic_means,
@@ -180,11 +186,25 @@ def run_lda(train_df, test_df, num_topics=6, passes=10, seed=42):
         print("\nNo test documents — skip test drift.")
 
 
-def run_embeddings(train_df, test_df, k_min=2, k_max=6, seed=42):
-    print("\n=== EMBEDDINGS ===")
+def run_embeddings(
+    train_df,
+    test_df,
+    k_min=2,
+    k_max=6,
+    seed=42,
+    model_name="sentence-transformers/all-MiniLM-L6-v2",
+):
+    print("\n=== EMBEDDINGS (DL: pretrained encoder + K-Means) ===")
 
     try:
-        from src.embeddings import encode_texts, find_best_k, cluster_time_split
+        from sklearn.preprocessing import LabelEncoder
+
+        from src.embeddings import (
+            encode_texts,
+            find_best_k,
+            cluster_time_split,
+            mean_embedding_per_bin,
+        )
     except ImportError:
         print("sentence-transformers not installed — skip embeddings.")
         return None
@@ -198,10 +218,15 @@ def run_embeddings(train_df, test_df, k_min=2, k_max=6, seed=42):
     texts_train = train_df["text"].tolist()
     texts_test = test_df["text"].tolist()
 
+    print(f"Encoder: {model_name} (frozen weights; no fine-tuning)")
     print("Encoding train...")
-    X_train = encode_texts(texts_train)
+    X_train, enc_model = encode_texts(texts_train, model_name=model_name)
     print("Encoding test...")
-    X_test = encode_texts(texts_test) if texts_test else None
+    X_test, _ = (
+        encode_texts(texts_test, model_name=model_name, model=enc_model)
+        if texts_test
+        else (None, enc_model)
+    )
 
     upper = min(k_max, len(X_train) - 1)
     if upper < k_min:
@@ -215,9 +240,15 @@ def run_embeddings(train_df, test_df, k_min=2, k_max=6, seed=42):
     if X_test is None or len(X_test) == 0:
         print("No test embeddings — fit clusters on train only for demo.")
         from src.embeddings import cluster
+
         labels_tr, _ = cluster(X_train, best_k, seed=seed)
         sil_tr = safe_silhouette(X_train, labels_tr)
         print(f"Silhouette train: {sil_tr:.4f}")
+        if "category" in train_df.columns:
+            le = LabelEncoder()
+            y_tr = le.fit_transform(train_df["category"].astype(str))
+            nmi_tr, ari_tr = cluster_category_alignment(y_tr, labels_tr)
+            print(f"Cluster vs category (train): NMI={nmi_tr:.4f}, ARI={ari_tr:.4f}")
         return best_k
 
     labels, km = cluster_time_split(X_train, X_test, best_k, seed=seed)
@@ -227,6 +258,26 @@ def run_embeddings(train_df, test_df, k_min=2, k_max=6, seed=42):
     print(f"Silhouette train: {sil_train:.4f}")
     print(f"Silhouette test:  {sil_test:.4f}")
     print(f"Total labeled docs: {len(labels)}")
+
+    # Weak supervision: compare clusters to HuffPost editor categories (not ground truth topics).
+    if "category" in train_df.columns and "category" in test_df.columns:
+        le = LabelEncoder()
+        le.fit(
+            pd.concat([train_df["category"], test_df["category"]], ignore_index=True).astype(str)
+        )
+        y_tr = le.transform(train_df["category"].astype(str))
+        y_te = le.transform(test_df["category"].astype(str))
+        nmi_tr, ari_tr = cluster_category_alignment(y_tr, labels[:n_tr])
+        nmi_te, ari_te = cluster_category_alignment(y_te, labels[n_tr:])
+        print(f"Cluster vs category (train): NMI={nmi_tr:.4f}, ARI={ari_tr:.4f}")
+        print(f"Cluster vs category (test):  NMI={nmi_te:.4f}, ARI={ari_te:.4f}")
+
+    # Temporal semantic drift on TEST: mean adjacent cosine distance between weekly bin centroids.
+    if len(test_df) >= 2 and test_df["time_bin"].nunique() >= 2:
+        _, cents = mean_embedding_per_bin(test_df, X_test)
+        sem_drift = mean_adjacent_cosine_distance(cents)
+        print(f"Semantic drift on TEST (mean adjacent bin-centroid cosine distance): {sem_drift:.4f}")
+
     return best_k
 
 
@@ -435,6 +486,12 @@ def main():
         default=3,
         help="How many topics to list as drivers per LDA event",
     )
+    parser.add_argument(
+        "--embedding-model",
+        type=str,
+        default="sentence-transformers/all-MiniLM-L6-v2",
+        help="SentenceTransformer checkpoint for embeddings + clustering (frozen encoder)",
+    )
     args = parser.parse_args()
 
     extra_stop = parse_extra_stopwords(args.extra_stopwords)
@@ -460,7 +517,7 @@ def main():
     if args.mode in ("lda", "all"):
         run_lda(train_df, test_df, num_topics=args.num_topics, seed=args.seed)
     if args.mode in ("embeddings", "all"):
-        run_embeddings(train_df, test_df, seed=args.seed)
+        run_embeddings(train_df, test_df, seed=args.seed, model_name=args.embedding_model)
     if args.mode in ("events",):
         events_out = run_events(
             train_df,
