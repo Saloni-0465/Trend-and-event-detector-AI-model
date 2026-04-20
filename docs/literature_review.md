@@ -41,9 +41,9 @@ Together, the gap for a *practical* trend detector is: (i) compare **lexical**, 
 | LDA ignores semantics and word order | We add a **sentence-embedding + K-Means** path so similar meaning clusters together even when keywords differ. |
 | Plain LDA does not expose temporal drift clearly | We **bin documents by calendar time**, aggregate mean document–topic vectors per bin, and measure **Jensen–Shannon divergence** between adjacent bins so shifts in the topic mix are visible. |
 | TOT is complex to ship early | We **do not** implement TOT in Phase 1; we use **fixed windows + post-hoc drift metrics** as a lighter-weight substitute that still answers “is the stream changing week to week?”. |
-| Perplexity alone is misleading | We report **perplexity** **and** **u_mass coherence** (Mimno-style interpretability). Phase 1 fits on the full sorted corpus for simplicity; a train/test split can be added later. |
+| Perplexity alone is misleading | We report **perplexity** **and** **u_mass coherence** (Mimno-style interpretability). Models are fit on **train time** only; perplexity and drift metrics include **held-out test** slices. |
 | Embedding clusters are hard to read | We **keep frequency / TF-IDF baselines and LDA** in the same pipeline so outputs stay interpretable and we can compare approaches side by side. |
-| Choosing *K* for clustering is arbitrary | Phase 1: pick *k* by **silhouette** over a small range on the embedding matrix, then **K-Means** on all points (`run_embeddings`). |
+| Choosing *K* for clustering is arbitrary | Phase 1: pick *k* by **silhouette** over a small range on **training** embeddings; **K-Means** is fit on train and **predict** assigns test (`run_embeddings`). |
 
 ---
 

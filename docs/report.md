@@ -46,7 +46,7 @@ All three model paths use the **same** time-based split so metrics are comparabl
 
 **LDA:** Trained on **train** only. **Train** and **test** log-perplexity; $u\_mass$ coherence on **train**; topic-mix **JSD** on **test** time bins only.
 
-**Embeddings:** *k* from silhouette on **train**; K-Means fit on **train**, **test** labels via `predict`; silhouette on **train** and **test**.
+**Embeddings:** *k* from silhouette on **train**; K-Means fit on **train**, **test** labels via `predict`; silhouette on **train** and **test**. We also report **NMI/ARI** between clusters and HuffPost editor **categories** (weak labels, not semantic topics). On the test window we report **mean adjacent cosine distance** between **weekly bin centroids** of L2-normalized embeddings as a simple semantic drift signal.
 
 ## 3. Methods
 
@@ -67,9 +67,17 @@ LDA treats each document as a mixture of topics and each topic as a distribution
 
 ### 3.3 Embeddings + Clustering
 
-- Encode with `all-MiniLM-L6-v2` (frozen sentence transformer)
+- Encode with `all-MiniLM-L6-v2` (frozen SentenceTransformer; no fine-tuning). MiniLM is a compact bi-encoder suited to short news text and runs on CPU for course-scale subsets.
 - *k* from best silhouette on **train** (e.g. k in 2..6)
 - K-Means on **train** only; **test** cluster assignments via `predict`; silhouette on train and test
+- **Validation:** **NMI** and **ARI** vs dataset `category` on train/test (clusters need not equal categories; metrics are permutation-invariant).
+- **Temporal semantics:** mean adjacent **cosine distance** between per-bin embedding centroids on the **test** period (complements lexical Jaccard and LDA topic JSD).
+
+### 3.4 Event detection (simple)
+
+- Lexical spikes: adjacent-bin **Jaccard drift** on top-frequency terms vs a percentile threshold.
+- LDA spikes: adjacent-bin **JSD** on mean topic mixtures under a percentile threshold.
+- Lightweight **labels** from churn terms / topic words plus optional **dominant category** in the event window.
 
 ## 4. Results
 
@@ -83,27 +91,30 @@ Results are from the 6-month 2018 subset. Exact numbers depend on the window siz
 | Topic JSD (test bins) | — | reported | — |
 | Silhouette (train / test) | — | — | both reported |
 | Chosen *k* | — | — | from train silhouette |
+| NMI / ARI vs category | — | — | train + test |
+| Semantic bin drift (test) | — | — | mean adjacent cosine centroid distance |
+| Events (lexical / LDA) | — | — | spike + simple labels |
 
 ## 5. Discussion
 
 - Baselines show moderate lexical overlap between windows, confirming some topic continuity
 - LDA finds interpretable topics but coherence varies with K
-- Embedding tier is a minimal demo (Phase 1); NMI/ARI vs category can be added when you need stricter evaluation
-- All three approaches detect temporal drift through different lenses
+- The DL path uses a standard **pretrained encoder + shallow clustering**: strong baselines for short text without training a Transformer from scratch
+- NMI/ARI quantify overlap between **clusters** and **editor categories**; low ARI is expected when categories do not match latent narrative structure
+- Lexical Jaccard, LDA topic JSD, embedding centroid drift, and spike events give complementary views of change over time
 
 ## 6. Limitations
 
-- Using only a 6-month subset for speed
-- No hyperparameter tuning beyond basic k-selection
-- No burst or event detection yet
+- Using only a 6-month subset for speed (full CSV available via `scripts/download_data.py`)
+- No hyperparameter tuning beyond basic k-selection and fixed LDA topic count
+- Encoder is **frozen**; fine-tuning would be a separate project phase
 - KMeans assumes spherical clusters which may not fit news categories well
 
 ## 7. Next Steps
 
 - Grid search for LDA num_topics
-- Hybrid model combining embeddings with temporal topic evolution
-- Event detection and impact scoring
-- Full dataset experiments
+- Optional: embedding-based event spikes (centroid drift thresholding)
+- Full dataset experiments with batched encoding if needed
 
 ## Reproducibility
 
