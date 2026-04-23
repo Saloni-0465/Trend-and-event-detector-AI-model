@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Trend & Event Detector</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ["Inter", "sans-serif"],
+            },
+          },
+        },
+      };
+    </script>
+  </head>
+
+  <body class="min-h-screen bg-slate-950 text-slate-100">
+    <div class="mx-auto max-w-6xl px-4 py-10">
+      <header class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 class="text-2xl font-semibold tracking-tight">Trend & Event Detector</h1>
+          <p class="mt-1 text-sm text-slate-300">
+            Explore lexical drift, semantic drift, and spike-based events.
+          </p>
+        </div>
+        <div class="text-xs text-slate-400">
+          API: <code class="rounded bg-slate-900 px-1 py-0.5">/api/dashboard</code>
+        </div>
+      </header>
+
+      <section class="mt-8 rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
+        <h2 class="text-sm font-semibold text-slate-200">Controls</h2>
+        <form id="controls" class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-12">
+          <div class="md:col-span-6">
+            <label class="block text-xs font-medium text-slate-300">CSV path</label>
+            <input
+              id="csv_path"
+              type="text"
+              class="mt-1 w-full rounded-lg border-slate-700 bg-slate-950/60 text-slate-100"
+              placeholder="data/sample/news_2018_h1.csv"
+            />
+          </div>
+
+          <div class="md:col-span-2">
+            <label class="block text-xs font-medium text-slate-300">Window</label>
+            <select
+              id="window"
+              class="mt-1 w-full rounded-lg border-slate-700 bg-slate-950/60 text-slate-100"
+            >
+              <option value="7D">7D (weekly)</option>
+              <option value="14D">14D (biweekly)</option>
+              <option value="30D">30D (monthly)</option>
+            </select>
+          </div>
+
+          <div class="md:col-span-2">
+            <label class="block text-xs font-medium text-slate-300">Event percentile</label>
+            <input
+              id="event_percentile"
+              type="number"
+              min="50"
+              max="99.9"
+              step="0.1"
+              value="90"
+              class="mt-1 w-full rounded-lg border-slate-700 bg-slate-950/60 text-slate-100"
+            />
+          </div>
+
+          <div class="md:col-span-2">
+            <label class="block text-xs font-medium text-slate-300">Top‑k terms</label>
+            <input
+              id="event_top_k_terms"
+              type="number"
+              min="5"
+              max="50"
+              step="1"
+              value="15"
+              class="mt-1 w-full rounded-lg border-slate-700 bg-slate-950/60 text-slate-100"
+            />
+          </div>
+
+          <div class="md:col-span-4">
+            <label class="block text-xs font-medium text-slate-300">Extra stopwords</label>
+            <select
+              id="extra_stopwords"
+              class="mt-1 w-full rounded-lg border-slate-700 bg-slate-950/60 text-slate-100"
+            >
+              <option value="none">none</option>
+              <option value="default">default (headline boilerplate)</option>
+            </select>
+          </div>
+
+          <div class="md:col-span-6">
+            <label class="block text-xs font-medium text-slate-300">Embedding model</label>
+            <input
+              id="embedding_model"
+              type="text"
+              class="mt-1 w-full rounded-lg border-slate-700 bg-slate-950/60 text-slate-100"
+              value="sentence-transformers/all-MiniLM-L6-v2"
+            />
+          </div>
+
+          <div class="md:col-span-2 md:flex md:items-end">
+            <button
+              type="submit"
+              class="w-full rounded-lg bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-400"
+            >
+              Run
+            </button>
+          </div>
+        </form>
+        <p id="error" class="mt-3 hidden text-sm text-rose-300"></p>
+      </section>
+
+      <section class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
+          <p class="text-xs font-medium text-slate-400">Documents (train / test)</p>
+          <p class="mt-2 text-2xl font-semibold">
+            <span id="kpi-train">—</span>
+            <span class="text-slate-500">/</span>
+            <span id="kpi-test">—</span>
+          </p>
+          <p class="mt-1 text-xs text-slate-400" id="kpi-range">—</p>
+        </div>
+
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
+          <p class="text-xs font-medium text-slate-400">Lexical drift (avg / peak)</p>
+          <p class="mt-2 text-2xl font-semibold">
+            <span id="kpi-avg">—</span>
+            <span class="text-slate-500">/</span>
+            <span id="kpi-peak">—</span>
+          </p>
+          <p class="mt-1 text-xs text-slate-400">Jaccard over top terms between adjacent bins</p>
+        </div>
+
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
+          <p class="text-xs font-medium text-slate-400">Semantic drift (embeddings)</p>
+          <p class="mt-2 text-2xl font-semibold" id="kpi-sem">—</p>
+          <p class="mt-1 text-xs text-slate-400" id="kpi-sem-note">—</p>
+        </div>
+      </section>
+
+      <section class="mt-6 rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
+        <div class="flex items-center justify-between gap-4">
+          <h2 class="text-sm font-semibold text-slate-200">Lexical drift chart (first 14 transitions)</h2>
+          <p class="text-xs text-slate-400">
+            Peak index: <span id="peak-index" class="font-mono">—</span>
+          </p>
+        </div>
+        <div class="mt-4 h-40 rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+          <div id="bars" class="flex h-full items-end gap-2"></div>
+        </div>
+      </section>
+
+      <section class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
+          <h2 class="text-sm font-semibold text-slate-200">Latest bin “topic distribution” (top terms)</h2>
+          <div id="topics" class="mt-4 space-y-3 text-sm text-slate-200"></div>
+        </div>
+
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
+          <h2 class="text-sm font-semibold text-slate-200">Detected events (lexical spikes)</h2>
+          <div class="mt-4 overflow-x-auto">
+            <table class="min-w-full text-left text-sm">
+              <thead class="text-xs text-slate-400">
+                <tr>
+                  <th class="py-2 pr-3">ID</th>
+                  <th class="py-2 pr-3">Label</th>
+                  <th class="py-2 pr-3">Category</th>
+                  <th class="py-2 pr-3">Score</th>
+                  <th class="py-2 pr-3">Window</th>
+                  <th class="py-2 pr-3">Drivers</th>
+                </tr>
+              </thead>
+              <tbody id="events" class="align-top text-slate-200"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      function qs(id) {
+        return document.getElementById(id);
+      }
+
+      function showError(msg) {
+        const el = qs("error");
+        if (!msg) {
+          el.classList.add("hidden");
+          el.textContent = "";
+          return;
+        }
+        el.textContent = msg;
+        el.classList.remove("hidden");
+      }
+
+      function pctBar(pct, isPeak) {
+        const h = Math.max(2, Math.min(100, pct));
+        const cls = isPeak ? "bg-emerald-400" : "bg-indigo-400";
+        return `<div class="flex-1 rounded-t ${cls}" style="height:${h}%"></div>`;
+      }
+
+      function renderBars(chart) {
+        const root = qs("bars");
+        root.innerHTML = "";
+        const bars = chart?.bars || [];
+        const peak = chart?.peak_index ?? 0;
+        if (!bars.length) {
+          root.innerHTML = `<div class="text-xs text-slate-500">No drift values to plot.</div>`;
+          return;
+        }
+        root.innerHTML = bars.map((v, i) => pctBar(v, i === peak)).join("");
+        qs("peak-index").textContent = String(peak);
+      }
+
+      function renderTopics(topics) {
+        const root = qs("topics");
+        if (!topics?.length) {
+          root.innerHTML = `<div class="text-xs text-slate-500">No terms available.</div>`;
+          return;
+        }
+        root.innerHTML = topics
+          .map(
+            (t) => `
+            <div>
+              <div class="flex items-center justify-between text-xs text-slate-300">
+                <span>${t.label}</span>
+                <span class="font-mono">${t.percent}%</span>
+              </div>
+              <div class="mt-1 h-2 rounded bg-slate-800">
+                <div class="h-2 rounded bg-indigo-400" style="width:${Math.max(2, t.percent)}%"></div>
+              </div>
+            </div>
+          `
+          )
+          .join("");
+      }
+
+      function renderEvents(rows) {
+        const tbody = qs("events");
+        if (!rows?.length) {
+          tbody.innerHTML = `<tr><td class="py-3 text-slate-500" colspan="6">No events detected.</td></tr>`;
+          return;
+        }
+        tbody.innerHTML = rows
+          .map((r) => {
+            const drivers = r?.drivers || {};
+            const newTerms = (drivers.new_terms || []).slice(0, 5).join(", ");
+            const dropped = (drivers.dropped_terms || []).slice(0, 5).join(", ");
+            const driverText = [newTerms ? `+ ${newTerms}` : "", dropped ? `- ${dropped}` : ""]
+              .filter(Boolean)
+              .join("<br/>");
+            return `
+              <tr class="border-t border-slate-800">
+                <td class="py-2 pr-3 font-mono text-xs text-slate-300">${r.id}</td>
+                <td class="py-2 pr-3">${r.label}</td>
+                <td class="py-2 pr-3 text-xs text-slate-300">${r.dominant_category || "—"}</td>
+                <td class="py-2 pr-3 font-mono text-xs">${Number(r.score || 0).toFixed(3)}</td>
+                <td class="py-2 pr-3 text-xs text-slate-300">${r.start_bin} → ${r.end_bin}</td>
+                <td class="py-2 pr-3 text-xs text-slate-300">${driverText || "—"}</td>
+              </tr>
+            `;
+          })
+          .join("");
+      }
+
+      function toQuery() {
+        const params = new URLSearchParams();
+        const csv = qs("csv_path").value.trim();
+        if (csv) params.set("csv_path", csv);
+        params.set("window", qs("window").value);
+        params.set("event_percentile", qs("event_percentile").value);
+        params.set("event_top_k_terms", qs("event_top_k_terms").value);
+        params.set("extra_stopwords", qs("extra_stopwords").value);
+        params.set("embedding_model", qs("embedding_model").value.trim());
+        return params.toString();
+      }
+
+      async function run() {
+        showError("");
+        const res = await fetch(`/api/dashboard?${toQuery()}`);
+        const payload = await res.json();
+        if (!res.ok || payload?.error) throw new Error(payload?.error || "API error");
+
+        const s = payload.summary || {};
+        qs("kpi-train").textContent = String(s.train_documents ?? "—");
+        qs("kpi-test").textContent = String(s.test_documents ?? "—");
+        qs("kpi-range").textContent = s.test_range || "—";
+        qs("kpi-avg").textContent = Number(s.avg_lexical_drift || 0).toFixed(4);
+        qs("kpi-peak").textContent = Number(s.peak_lexical_drift || 0).toFixed(4);
+
+        const sem = payload.semantic || {};
+        if (sem.available) {
+          qs("kpi-sem").textContent = Number(sem.mean_adjacent_cosine_distance || 0).toFixed(4);
+          qs("kpi-sem-note").textContent = `Mean adjacent cosine distance across ${sem.n_bins} bins`;
+        } else {
+          qs("kpi-sem").textContent = "N/A";
+          qs("kpi-sem-note").textContent = sem.error ? `Unavailable: ${sem.error}` : "Unavailable for this selection";
+        }
+
+        renderBars(payload.drift_chart);
+        renderTopics(payload.topic_distribution);
+        renderEvents(payload.events);
+      }
+
+      qs("controls").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        try {
+          await run();
+        } catch (err) {
+          showError(err.message || String(err));
+        }
+      });
+
+      // initial run
+      run().catch((err) => showError(err.message || String(err)));
+    </script>
+  </body>
+</html>
+
