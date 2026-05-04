@@ -4,328 +4,927 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Trend & Event Detector</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ["Inter", "sans-serif"],
-            },
-          },
-        },
-      };
-    </script>
+    <style>
+      :root {
+        --bg: #f6f4ef;
+        --panel: #ffffff;
+        --panel-2: #fbfaf7;
+        --text: #1d2528;
+        --muted: #687276;
+        --line: #d9d5cb;
+        --teal: #08756f;
+        --teal-2: #0b9a8e;
+        --amber: #be7c16;
+        --rose: #b94b5e;
+        --ink: #172024;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--text);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        letter-spacing: 0;
+      }
+
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+
+      .shell {
+        display: grid;
+        grid-template-columns: 320px minmax(0, 1fr);
+        min-height: 100vh;
+      }
+
+      aside {
+        border-right: 1px solid var(--line);
+        background: #ede8dc;
+        padding: 20px;
+        position: sticky;
+        top: 0;
+        height: 100vh;
+        overflow: auto;
+      }
+
+      main {
+        padding: 22px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 18px;
+      }
+
+      .mark {
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        display: grid;
+        place-items: center;
+        background: var(--ink);
+        color: #f8f2e6;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 19px;
+        line-height: 1.15;
+      }
+
+      .sub {
+        margin: 3px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: 0 1px 0 rgba(23, 32, 36, 0.04);
+      }
+
+      .controls {
+        padding: 14px;
+      }
+
+      label {
+        display: block;
+        margin: 12px 0 6px;
+        color: #3d484c;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      input,
+      select {
+        width: 100%;
+        min-height: 38px;
+        border: 1px solid #c9c3b7;
+        border-radius: 6px;
+        background: #fffefa;
+        color: var(--text);
+        padding: 8px 10px;
+        outline: none;
+      }
+
+      input:focus,
+      select:focus {
+        border-color: var(--teal);
+        box-shadow: 0 0 0 3px rgba(8, 117, 111, 0.13);
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      .actions {
+        display: grid;
+        grid-template-columns: 1fr 44px;
+        gap: 8px;
+        margin-top: 14px;
+      }
+
+      .primary,
+      .icon-btn {
+        border: 0;
+        border-radius: 6px;
+        background: var(--teal);
+        color: white;
+        cursor: pointer;
+        font-weight: 800;
+      }
+
+      .primary {
+        height: 40px;
+      }
+
+      .icon-btn {
+        height: 40px;
+        display: grid;
+        place-items: center;
+      }
+
+      .primary:hover,
+      .icon-btn:hover {
+        background: #075f5a;
+      }
+
+      .primary:disabled,
+      .icon-btn:disabled {
+        cursor: wait;
+        opacity: 0.65;
+      }
+
+      .status {
+        margin-top: 12px;
+        min-height: 20px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .status.error {
+        color: var(--rose);
+        font-weight: 700;
+      }
+
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        gap: 18px;
+        align-items: flex-start;
+        margin-bottom: 16px;
+      }
+
+      .title h2 {
+        margin: 0;
+        font-size: 24px;
+      }
+
+      .title p {
+        margin: 4px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        border-radius: 999px;
+        padding: 7px 10px;
+        color: #3d484c;
+        font-size: 12px;
+        white-space: nowrap;
+      }
+
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--teal-2);
+      }
+
+      .grid {
+        display: grid;
+        gap: 14px;
+      }
+
+      .kpis {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .metric {
+        padding: 15px;
+      }
+
+      .metric .label {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .metric .value {
+        margin-top: 8px;
+        font-size: 27px;
+        line-height: 1;
+        font-weight: 850;
+      }
+
+      .metric .note {
+        margin-top: 7px;
+        min-height: 16px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .layout {
+        grid-template-columns: minmax(0, 1.5fr) minmax(320px, 0.9fr);
+        align-items: start;
+        margin-top: 14px;
+      }
+
+      .section-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 14px 0;
+      }
+
+      .section-head h3 {
+        margin: 0;
+        font-size: 14px;
+      }
+
+      .section-head span {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .chart {
+        height: 230px;
+        padding: 12px 14px 14px;
+      }
+
+      .bars {
+        display: flex;
+        align-items: end;
+        gap: 6px;
+        height: 100%;
+        border-left: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+        padding: 10px 8px 0;
+      }
+
+      .bar-wrap {
+        flex: 1;
+        min-width: 12px;
+        height: 100%;
+        display: flex;
+        align-items: end;
+        position: relative;
+      }
+
+      .bar {
+        width: 100%;
+        min-height: 3px;
+        border-radius: 5px 5px 0 0;
+        background: var(--teal);
+      }
+
+      .bar.peak {
+        background: var(--rose);
+      }
+
+      .bar.hybrid {
+        background: var(--amber);
+      }
+
+      .split {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        margin-top: 14px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+
+      th,
+      td {
+        border-bottom: 1px solid var(--line);
+        padding: 9px 8px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        color: #465256;
+        font-size: 11px;
+        text-transform: uppercase;
+      }
+
+      td.num,
+      th.num {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .table-wrap {
+        overflow: auto;
+        padding: 2px 14px 14px;
+      }
+
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        min-height: 22px;
+        border-radius: 999px;
+        padding: 3px 8px;
+        background: #eee7d8;
+        color: #4d4b43;
+        font-size: 11px;
+        font-weight: 800;
+      }
+
+      .tag.alert {
+        background: #f3d9dd;
+        color: #842f40;
+      }
+
+      .terms {
+        padding: 2px 14px 14px;
+      }
+
+      .term {
+        margin-top: 10px;
+      }
+
+      .term-line {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        color: #384346;
+        font-size: 12px;
+      }
+
+      .track {
+        height: 7px;
+        margin-top: 5px;
+        border-radius: 999px;
+        background: #e6e0d5;
+        overflow: hidden;
+      }
+
+      .fill {
+        height: 100%;
+        border-radius: inherit;
+        background: var(--teal);
+      }
+
+      .events {
+        margin-top: 14px;
+      }
+
+      .event-list {
+        display: grid;
+        gap: 10px;
+        padding: 2px 14px 14px;
+      }
+
+      .event {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel-2);
+        padding: 12px;
+      }
+
+      .event-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .event h4 {
+        margin: 0;
+        font-size: 13px;
+        line-height: 1.35;
+      }
+
+      .event p {
+        margin: 7px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .driver {
+        margin-top: 9px;
+        color: #3d484c;
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .empty {
+        padding: 18px 14px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .skeleton {
+        position: relative;
+        overflow: hidden;
+      }
+
+      .skeleton::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        transform: translateX(-100%);
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+        animation: shimmer 1.2s infinite;
+      }
+
+      @keyframes shimmer {
+        100% {
+          transform: translateX(100%);
+        }
+      }
+
+      @media (max-width: 980px) {
+        .shell {
+          grid-template-columns: 1fr;
+        }
+
+        aside {
+          position: static;
+          height: auto;
+        }
+
+        .kpis,
+        .layout,
+        .split {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
   </head>
-
-  <body class="min-h-screen bg-slate-950 text-slate-100">
-    <div class="mx-auto max-w-6xl px-4 py-10">
-      <header class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 class="text-2xl font-semibold tracking-tight">Trend & Event Detector</h1>
-          <p class="mt-1 text-sm text-slate-300">
-            Explore lexical drift, semantic drift, and spike-based events.
-          </p>
+  <body>
+    <div class="shell">
+      <aside>
+        <div class="brand">
+          <div class="mark" aria-hidden="true">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
+              <path d="M4 17L9 11L13 14L20 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M15 6H20V11" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </div>
+          <div>
+            <h1>Trend & Event Detector</h1>
+            <p class="sub">Hybrid news-stream analysis</p>
+          </div>
         </div>
-        <div class="text-xs text-slate-400">
-          API: <code class="rounded bg-slate-900 px-1 py-0.5">/api/dashboard</code>
-        </div>
-      </header>
 
-      <section class="mt-8 rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
-        <h2 class="text-sm font-semibold text-slate-200">Controls</h2>
-        <form id="controls" class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-12">
-          <div class="md:col-span-6">
-            <label class="block text-xs font-medium text-slate-300">CSV path</label>
-            <input
-              id="csv_path"
-              type="text"
-              class="mt-1 w-full rounded-lg border-slate-700 bg-slate-950/60 text-slate-100"
-              placeholder="data/sample/news_2018_h1.csv"
-            />
+        <form id="controls" class="panel controls">
+          <label for="csv_path">CSV path</label>
+          <input id="csv_path" type="text" value="data/sample/news_2018_h1.csv" />
+
+          <div class="row">
+            <div>
+              <label for="window">Window</label>
+              <select id="window">
+                <option value="7D">7D</option>
+                <option value="14D">14D</option>
+                <option value="30D">30D</option>
+              </select>
+            </div>
+            <div>
+              <label for="num_topics">LDA topics</label>
+              <input id="num_topics" type="number" min="2" max="20" step="1" value="6" />
+            </div>
           </div>
 
-          <div class="md:col-span-2">
-            <label class="block text-xs font-medium text-slate-300">Window</label>
-            <select
-              id="window"
-              class="mt-1 w-full rounded-lg border-slate-700 bg-slate-950/60 text-slate-100"
-            >
-              <option value="7D">7D (weekly)</option>
-              <option value="14D">14D (biweekly)</option>
-              <option value="30D">30D (monthly)</option>
-            </select>
+          <label>Train split</label>
+          <div class="row">
+            <input id="train_start" type="date" value="2018-01-01" aria-label="Train start" />
+            <input id="train_end" type="date" value="2018-05-01" aria-label="Train end" />
           </div>
 
-          <div class="md:col-span-2">
-            <label class="block text-xs font-medium text-slate-300">Event percentile</label>
-            <input
-              id="event_percentile"
-              type="number"
-              min="50"
-              max="99.9"
-              step="0.1"
-              value="90"
-              class="mt-1 w-full rounded-lg border-slate-700 bg-slate-950/60 text-slate-100"
-            />
+          <label>Test split</label>
+          <div class="row">
+            <input id="test_start" type="date" value="2018-05-01" aria-label="Test start" />
+            <input id="test_end" type="date" value="2018-07-01" aria-label="Test end" />
           </div>
 
-          <div class="md:col-span-2">
-            <label class="block text-xs font-medium text-slate-300">Top‑k terms</label>
-            <input
-              id="event_top_k_terms"
-              type="number"
-              min="5"
-              max="50"
-              step="1"
-              value="15"
-              class="mt-1 w-full rounded-lg border-slate-700 bg-slate-950/60 text-slate-100"
-            />
+          <div class="row">
+            <div>
+              <label for="event_percentile">Event %ile</label>
+              <input id="event_percentile" type="number" min="50" max="99.9" step="0.1" value="90" />
+            </div>
+            <div>
+              <label for="ablation_percentile">Ablation %ile</label>
+              <input id="ablation_percentile" type="number" min="50" max="99.9" step="0.1" value="80" />
+            </div>
           </div>
 
-          <div class="md:col-span-4">
-            <label class="block text-xs font-medium text-slate-300">Extra stopwords</label>
-            <select
-              id="extra_stopwords"
-              class="mt-1 w-full rounded-lg border-slate-700 bg-slate-950/60 text-slate-100"
-            >
-              <option value="none">none</option>
-              <option value="default">default (headline boilerplate)</option>
-            </select>
+          <div class="row">
+            <div>
+              <label for="event_top_k_terms">Top-k terms</label>
+              <input id="event_top_k_terms" type="number" min="5" max="50" step="1" value="15" />
+            </div>
+            <div>
+              <label for="extra_stopwords">Stopwords</label>
+              <select id="extra_stopwords">
+                <option value="none">none</option>
+                <option value="default">default</option>
+              </select>
+            </div>
           </div>
 
-          <div class="md:col-span-6">
-            <label class="block text-xs font-medium text-slate-300">Embedding model</label>
-            <input
-              id="embedding_model"
-              type="text"
-              class="mt-1 w-full rounded-lg border-slate-700 bg-slate-950/60 text-slate-100"
-              value="sentence-transformers/all-MiniLM-L6-v2"
-            />
-          </div>
+          <label for="embedding_model">Embedding model</label>
+          <input id="embedding_model" type="text" value="sentence-transformers/all-MiniLM-L6-v2" />
 
-          <div class="md:col-span-2 md:flex md:items-end">
-            <button
-              type="submit"
-              class="w-full rounded-lg bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-400"
-            >
-              Run
+          <div class="actions">
+            <button class="primary" id="run_btn" type="submit">Run Analysis</button>
+            <button class="icon-btn" id="reset_btn" type="button" title="Reset controls" aria-label="Reset controls">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M3 12a9 9 0 1 0 3-6.7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+                <path d="M3 4v6h6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
             </button>
           </div>
+          <div id="status" class="status">Ready</div>
         </form>
-        <p id="error" class="mt-3 hidden text-sm text-rose-300"></p>
-      </section>
+      </aside>
 
-      <section class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
-          <p class="text-xs font-medium text-slate-400">Documents (train / test)</p>
-          <p class="mt-2 text-2xl font-semibold">
-            <span id="kpi-train">—</span>
-            <span class="text-slate-500">/</span>
-            <span id="kpi-test">—</span>
-          </p>
-          <p class="mt-1 text-xs text-slate-400" id="kpi-range">—</p>
-        </div>
-
-        <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
-          <p class="text-xs font-medium text-slate-400">Lexical drift (avg / peak)</p>
-          <p class="mt-2 text-2xl font-semibold">
-            <span id="kpi-avg">—</span>
-            <span class="text-slate-500">/</span>
-            <span id="kpi-peak">—</span>
-          </p>
-          <p class="mt-1 text-xs text-slate-400">Jaccard over top terms between adjacent bins</p>
-        </div>
-
-        <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
-          <p class="text-xs font-medium text-slate-400">Semantic drift (embeddings)</p>
-          <p class="mt-2 text-2xl font-semibold" id="kpi-sem">—</p>
-          <p class="mt-1 text-xs text-slate-400" id="kpi-sem-note">—</p>
-        </div>
-      </section>
-
-      <section class="mt-6 rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
-        <div class="flex items-center justify-between gap-4">
-          <h2 class="text-sm font-semibold text-slate-200">Lexical drift chart (first 14 transitions)</h2>
-          <p class="text-xs text-slate-400">
-            Peak index: <span id="peak-index" class="font-mono">—</span>
-          </p>
-        </div>
-        <div class="mt-4 h-40 rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-          <div id="bars" class="flex h-full items-end gap-2"></div>
-        </div>
-      </section>
-
-      <section class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
-          <h2 class="text-sm font-semibold text-slate-200">Latest bin “topic distribution” (top terms)</h2>
-          <div id="topics" class="mt-4 space-y-3 text-sm text-slate-200"></div>
-        </div>
-
-        <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
-          <h2 class="text-sm font-semibold text-slate-200">Detected events (lexical spikes)</h2>
-          <div class="mt-4 overflow-x-auto">
-            <table class="min-w-full text-left text-sm">
-              <thead class="text-xs text-slate-400">
-                <tr>
-                  <th class="py-2 pr-3">ID</th>
-                  <th class="py-2 pr-3">Label</th>
-                  <th class="py-2 pr-3">Category</th>
-                  <th class="py-2 pr-3">Score</th>
-                  <th class="py-2 pr-3">Window</th>
-                  <th class="py-2 pr-3">Drivers</th>
-                </tr>
-              </thead>
-              <tbody id="events" class="align-top text-slate-200"></tbody>
-            </table>
+      <main>
+        <div class="topbar">
+          <div class="title">
+            <h2>Operational Drift Dashboard</h2>
+            <p id="subtitle">Real-data validation across lexical, probabilistic, and neural signals.</p>
           </div>
+          <div class="pill"><span class="dot"></span><span id="run-state">Idle</span></div>
         </div>
-      </section>
+
+        <section class="grid kpis">
+          <div class="panel metric">
+            <div class="label">Documents</div>
+            <div class="value"><span id="kpi-train">-</span><span style="color:var(--muted)"> / </span><span id="kpi-test">-</span></div>
+            <div class="note" id="kpi-range">-</div>
+          </div>
+          <div class="panel metric">
+            <div class="label">Lexical Drift</div>
+            <div class="value"><span id="kpi-avg">-</span></div>
+            <div class="note">avg, peak <span id="kpi-peak">-</span></div>
+          </div>
+          <div class="panel metric">
+            <div class="label">Semantic Drift</div>
+            <div class="value" id="kpi-sem">-</div>
+            <div class="note" id="kpi-sem-note">-</div>
+          </div>
+          <div class="panel metric">
+            <div class="label">Hybrid Rank</div>
+            <div class="value" id="kpi-hybrid">-</div>
+            <div class="note" id="kpi-hybrid-note">Spearman vs category drift</div>
+          </div>
+        </section>
+
+        <section class="grid layout">
+          <div class="grid">
+            <div class="panel">
+              <div class="section-head">
+                <h3>Transition Drift</h3>
+                <span id="chart-note">Lexical drift, first transitions</span>
+              </div>
+              <div class="chart">
+                <div id="bars" class="bars"></div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="section-head">
+                <h3>Hybrid Ablation</h3>
+                <span>same held-out transitions</span>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Model</th>
+                      <th class="num">Precision</th>
+                      <th class="num">Recall</th>
+                      <th class="num">F1</th>
+                      <th class="num">Spearman</th>
+                    </tr>
+                  </thead>
+                  <tbody id="ablation"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="section-head">
+                <h3>Top Hybrid Transitions</h3>
+                <span>ranked event candidates</span>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Window</th>
+                      <th class="num">Hybrid</th>
+                      <th class="num">Lex</th>
+                      <th class="num">LDA</th>
+                      <th class="num">Sem</th>
+                      <th class="num">Target</th>
+                    </tr>
+                  </thead>
+                  <tbody id="transitions"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid">
+            <div class="panel">
+              <div class="section-head">
+                <h3>Latest Terms</h3>
+                <span>latest test bin</span>
+              </div>
+              <div id="topics" class="terms"></div>
+            </div>
+
+            <div class="panel">
+              <div class="section-head">
+                <h3>LDA Topics</h3>
+                <span id="lda-note">probabilistic branch</span>
+              </div>
+              <div id="lda-topics" class="event-list"></div>
+            </div>
+
+            <div class="panel events">
+              <div class="section-head">
+                <h3>Detected Events</h3>
+                <span>lexical spikes</span>
+              </div>
+              <div id="events" class="event-list"></div>
+            </div>
+          </div>
+        </section>
+      </main>
     </div>
 
     <script>
-      function qs(id) {
-        return document.getElementById(id);
+      const $ = (id) => document.getElementById(id);
+      const defaults = {
+        csv_path: "data/sample/news_2018_h1.csv",
+        window: "7D",
+        num_topics: "6",
+        train_start: "2018-01-01",
+        train_end: "2018-05-01",
+        test_start: "2018-05-01",
+        test_end: "2018-07-01",
+        event_percentile: "90",
+        ablation_percentile: "80",
+        event_top_k_terms: "15",
+        extra_stopwords: "none",
+        embedding_model: "sentence-transformers/all-MiniLM-L6-v2",
+      };
+
+      function setStatus(text, type = "") {
+        $("status").textContent = text;
+        $("status").className = `status ${type}`;
+        $("run-state").textContent = text;
       }
 
-      function showError(msg) {
-        const el = qs("error");
-        if (!msg) {
-          el.classList.add("hidden");
-          el.textContent = "";
+      function number(value, digits = 3) {
+        const n = Number(value);
+        return Number.isFinite(n) ? n.toFixed(digits) : "-";
+      }
+
+      function safeText(value) {
+        return String(value ?? "-")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;");
+      }
+
+      function query() {
+        const params = new URLSearchParams();
+        Object.keys(defaults).forEach((id) => params.set(id, $(id).value.trim()));
+        return params.toString();
+      }
+
+      function loading(on) {
+        $("run_btn").disabled = on;
+        $("reset_btn").disabled = on;
+        document.querySelectorAll(".metric").forEach((el) => el.classList.toggle("skeleton", on));
+      }
+
+      function renderBars(payload) {
+        const root = $("bars");
+        const transitions = payload?.hybrid?.top_transitions || [];
+        const chart = payload?.drift_chart || {};
+        const raw = chart.raw_values || [];
+        if (!raw.length) {
+          root.innerHTML = `<div class="empty">No transitions available.</div>`;
           return;
         }
-        el.textContent = msg;
-        el.classList.remove("hidden");
+
+        const hybridByWindow = new Map(
+          transitions.map((r) => [`${r.start_bin}->${r.end_bin}`, Number(r.hybrid_score || 0)])
+        );
+        const maxHybrid = Math.max(...transitions.map((r) => Number(r.hybrid_score || 0)), 0.01);
+        root.innerHTML = raw
+          .map((v, i) => {
+            const isPeak = i === chart.peak_index;
+            const h = Math.max(3, Math.min(100, Number(chart.bars?.[i] || 0)));
+            const row = payload.transitions?.[i];
+            const key = row ? `${row.start_bin}->${row.end_bin}` : "";
+            const hybrid = hybridByWindow.get(key);
+            const cls = hybrid !== undefined && hybrid / maxHybrid > 0.75 ? "bar hybrid" : isPeak ? "bar peak" : "bar";
+            return `<div class="bar-wrap" title="transition ${i}: ${number(v, 4)}"><div class="${cls}" style="height:${h}%"></div></div>`;
+          })
+          .join("");
       }
 
-      function pctBar(pct, isPeak) {
-        const h = Math.max(2, Math.min(100, pct));
-        const cls = isPeak ? "bg-emerald-400" : "bg-indigo-400";
-        return `<div class="flex-1 rounded-t ${cls}" style="height:${h}%"></div>`;
-      }
-
-      function renderBars(chart) {
-        const root = qs("bars");
-        root.innerHTML = "";
-        const bars = chart?.bars || [];
-        const peak = chart?.peak_index ?? 0;
-        if (!bars.length) {
-          root.innerHTML = `<div class="text-xs text-slate-500">No drift values to plot.</div>`;
+      function renderTerms(rows) {
+        const root = $("topics");
+        if (!rows?.length) {
+          root.innerHTML = `<div class="empty">No terms available.</div>`;
           return;
         }
-        root.innerHTML = bars.map((v, i) => pctBar(v, i === peak)).join("");
-        qs("peak-index").textContent = String(peak);
-      }
-
-      function renderTopics(topics) {
-        const root = qs("topics");
-        if (!topics?.length) {
-          root.innerHTML = `<div class="text-xs text-slate-500">No terms available.</div>`;
-          return;
-        }
-        root.innerHTML = topics
+        root.innerHTML = rows
           .map(
             (t) => `
-            <div>
-              <div class="flex items-center justify-between text-xs text-slate-300">
-                <span>${t.label}</span>
-                <span class="font-mono">${t.percent}%</span>
-              </div>
-              <div class="mt-1 h-2 rounded bg-slate-800">
-                <div class="h-2 rounded bg-indigo-400" style="width:${Math.max(2, t.percent)}%"></div>
-              </div>
-            </div>
-          `
+            <div class="term">
+              <div class="term-line"><strong>${safeText(t.label)}</strong><span>${number(t.percent, 0)}%</span></div>
+              <div class="track"><div class="fill" style="width:${Math.max(3, Number(t.percent || 0))}%"></div></div>
+            </div>`
+          )
+          .join("");
+      }
+
+      function renderAblation(hybrid) {
+        const body = $("ablation");
+        if (!hybrid?.available) {
+          body.innerHTML = `<tr><td colspan="5" class="empty">${safeText(hybrid?.error || "Hybrid metrics unavailable.")}</td></tr>`;
+          $("kpi-hybrid").textContent = "N/A";
+          return;
+        }
+        body.innerHTML = hybrid.ablation
+          .map((r) => {
+            const strong = r.model === "Hybrid" ? "font-weight:850;color:var(--teal)" : "";
+            return `<tr style="${strong}">
+              <td>${safeText(r.model)}</td>
+              <td class="num">${number(r.precision)}</td>
+              <td class="num">${number(r.recall)}</td>
+              <td class="num">${number(r.f1)}</td>
+              <td class="num">${number(r.spearman)}</td>
+            </tr>`;
+          })
+          .join("");
+        const h = hybrid.ablation.find((r) => r.model === "Hybrid");
+        $("kpi-hybrid").textContent = number(h?.spearman, 3);
+      }
+
+      function renderTransitions(hybrid) {
+        const body = $("transitions");
+        const rows = hybrid?.top_transitions || [];
+        if (!rows.length) {
+          body.innerHTML = `<tr><td colspan="6" class="empty">No hybrid transitions available.</td></tr>`;
+          return;
+        }
+        body.innerHTML = rows
+          .map(
+            (r) => `<tr>
+              <td>${safeText(r.start_bin)} -> ${safeText(r.end_bin)}</td>
+              <td class="num"><strong>${number(r.hybrid_score)}</strong></td>
+              <td class="num">${number(r.lexical_drift)}</td>
+              <td class="num">${number(r.lda_jsd)}</td>
+              <td class="num">${number(r.semantic_cosine_distance)}</td>
+              <td class="num">${number(r.target_category_drift)}</td>
+            </tr>`
+          )
+          .join("");
+      }
+
+      function renderLda(lda) {
+        const root = $("lda-topics");
+        if (!lda?.available) {
+          $("lda-note").textContent = lda?.error ? "unavailable" : "probabilistic branch";
+          root.innerHTML = `<div class="empty">${safeText(lda?.error || "No LDA topics available.")}</div>`;
+          return;
+        }
+        $("lda-note").textContent = `mean JSD ${number(lda.mean_adjacent_jsd, 4)}`;
+        root.innerHTML = lda.topics
+          .map(
+            (t) => `<div class="event">
+              <div class="event-top"><h4>Topic ${t.topic_id}</h4><span class="tag">LDA</span></div>
+              <p>${safeText((t.words || []).join(", "))}</p>
+            </div>`
           )
           .join("");
       }
 
       function renderEvents(rows) {
-        const tbody = qs("events");
+        const root = $("events");
         if (!rows?.length) {
-          tbody.innerHTML = `<tr><td class="py-3 text-slate-500" colspan="6">No events detected.</td></tr>`;
+          root.innerHTML = `<div class="empty">No events detected.</div>`;
           return;
         }
-        tbody.innerHTML = rows
+        root.innerHTML = rows
           .map((r) => {
-            const drivers = r?.drivers || {};
-            const newTerms = (drivers.new_terms || []).slice(0, 5).join(", ");
-            const dropped = (drivers.dropped_terms || []).slice(0, 5).join(", ");
-            const driverText = [newTerms ? `+ ${newTerms}` : "", dropped ? `- ${dropped}` : ""]
-              .filter(Boolean)
-              .join("<br/>");
-            return `
-              <tr class="border-t border-slate-800">
-                <td class="py-2 pr-3 font-mono text-xs text-slate-300">${r.id}</td>
-                <td class="py-2 pr-3">${r.label}</td>
-                <td class="py-2 pr-3 text-xs text-slate-300">${r.dominant_category || "—"}</td>
-                <td class="py-2 pr-3 font-mono text-xs">${Number(r.score || 0).toFixed(3)}</td>
-                <td class="py-2 pr-3 text-xs text-slate-300">${r.start_bin} → ${r.end_bin}</td>
-                <td class="py-2 pr-3 text-xs text-slate-300">${driverText || "—"}</td>
-              </tr>
-            `;
+            const drivers = r.drivers || {};
+            const newTerms = (drivers.new_terms || []).slice(0, 6).join(", ");
+            const dropped = (drivers.dropped_terms || []).slice(0, 6).join(", ");
+            return `<article class="event">
+              <div class="event-top">
+                <h4>${safeText(r.label)}</h4>
+                <span class="tag alert">${safeText(r.dominant_category || "N/A")}</span>
+              </div>
+              <p>${safeText(r.start_bin)} -> ${safeText(r.end_bin)} | score ${number(r.score)}</p>
+              <div class="driver">
+                ${newTerms ? `<div><strong>New:</strong> ${safeText(newTerms)}</div>` : ""}
+                ${dropped ? `<div><strong>Dropped:</strong> ${safeText(dropped)}</div>` : ""}
+              </div>
+            </article>`;
           })
           .join("");
       }
 
-      function toQuery() {
-        const params = new URLSearchParams();
-        const csv = qs("csv_path").value.trim();
-        if (csv) params.set("csv_path", csv);
-        params.set("window", qs("window").value);
-        params.set("event_percentile", qs("event_percentile").value);
-        params.set("event_top_k_terms", qs("event_top_k_terms").value);
-        params.set("extra_stopwords", qs("extra_stopwords").value);
-        params.set("embedding_model", qs("embedding_model").value.trim());
-        return params.toString();
-      }
-
-      async function run() {
-        showError("");
-        const res = await fetch(`/api/dashboard?${toQuery()}`);
-        const payload = await res.json();
-        if (!res.ok || payload?.error) throw new Error(payload?.error || "API error");
-
+      function render(payload) {
         const s = payload.summary || {};
-        qs("kpi-train").textContent = String(s.train_documents ?? "—");
-        qs("kpi-test").textContent = String(s.test_documents ?? "—");
-        qs("kpi-range").textContent = s.test_range || "—";
-        qs("kpi-avg").textContent = Number(s.avg_lexical_drift || 0).toFixed(4);
-        qs("kpi-peak").textContent = Number(s.peak_lexical_drift || 0).toFixed(4);
+        $("kpi-train").textContent = safeText(s.train_documents);
+        $("kpi-test").textContent = safeText(s.test_documents);
+        $("kpi-range").textContent = safeText(s.test_range);
+        $("kpi-avg").textContent = number(s.avg_lexical_drift, 4);
+        $("kpi-peak").textContent = number(s.peak_lexical_drift, 4);
+        $("subtitle").textContent = `${safeText(payload.params?.window)} bins | ${safeText(payload.params?.train_start)} to ${safeText(payload.params?.test_end)}`;
 
         const sem = payload.semantic || {};
         if (sem.available) {
-          qs("kpi-sem").textContent = Number(sem.mean_adjacent_cosine_distance || 0).toFixed(4);
-          qs("kpi-sem-note").textContent = `Mean adjacent cosine distance across ${sem.n_bins} bins`;
+          $("kpi-sem").textContent = number(sem.mean_adjacent_cosine_distance, 4);
+          $("kpi-sem-note").textContent = `${sem.n_bins} test bins`;
         } else {
-          qs("kpi-sem").textContent = "N/A";
-          qs("kpi-sem-note").textContent = sem.error ? `Unavailable: ${sem.error}` : "Unavailable for this selection";
+          $("kpi-sem").textContent = "N/A";
+          $("kpi-sem-note").textContent = sem.error ? "embedding unavailable" : "not enough bins";
         }
 
-        renderBars(payload.drift_chart);
-        renderTopics(payload.topic_distribution);
+        renderBars(payload);
+        renderTerms(payload.topic_distribution);
+        renderAblation(payload.hybrid);
+        renderTransitions(payload.hybrid);
+        renderLda(payload.lda);
         renderEvents(payload.events);
       }
 
-      qs("controls").addEventListener("submit", async (e) => {
-        e.preventDefault();
+      async function run() {
+        loading(true);
+        setStatus("Running");
         try {
-          await run();
+          const response = await fetch(`/api/dashboard?${query()}`);
+          const payload = await response.json();
+          if (!response.ok || payload.error) throw new Error(payload.error || "Dashboard request failed");
+          render(payload);
+          setStatus("Ready");
         } catch (err) {
-          showError(err.message || String(err));
+          setStatus(err.message || String(err), "error");
+        } finally {
+          loading(false);
         }
+      }
+
+      $("controls").addEventListener("submit", (event) => {
+        event.preventDefault();
+        run();
       });
 
-      // initial run
-      run().catch((err) => showError(err.message || String(err)));
+      $("reset_btn").addEventListener("click", () => {
+        Object.entries(defaults).forEach(([id, value]) => {
+          $(id).value = value;
+        });
+        run();
+      });
+
+      run();
     </script>
   </body>
 </html>
-

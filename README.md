@@ -47,6 +47,9 @@ python -m src.main --mode embeddings --embedding-model sentence-transformers/all
 # lexical + LDA event spikes + simple labels (test period)
 python -m src.main --mode events
 
+# Phase 3: hybrid fusion + same-split ablation table
+python -m src.main --mode hybrid
+
 # use full dataset instead of 6-month subset
 python -m src.main --mode all --csv-path data/news_full.csv
 
@@ -67,6 +70,9 @@ python -m src.main --mode all
 
 # DL path only: NMI/ARI vs category + semantic drift on test bins
 python -m src.main --mode embeddings
+
+# Phase 3 validation: ML-only vs DL-only vs Hybrid on the same test transitions
+python -m src.main --mode hybrid
 ```
 
 ## Tests
@@ -84,6 +90,7 @@ src/
   lda_model.py     — LDA topic model (gensim)
   embeddings.py    — sentence embeddings + KMeans
   events.py        — spike-style event detection helpers + labeling
+  hybrid.py        — Phase 3 fusion + ablation metrics
   metrics.py       — Jaccard, JSD, silhouette, NMI, ARI
   main.py          — CLI entry point
 scripts/
@@ -92,6 +99,31 @@ scripts/
 tests/
   test_pipeline.py — unit tests
 docs/
+  architecture.md  — Phase 3 data-flow and fusion diagram
   literature_review.md — background research
   report.md        — Phase 1 report
 ```
+
+## Phase 3 Hybrid Model
+
+The hybrid model aligns three signals on the same adjacent time-bin transitions:
+
+- ML-only lexical drift: `1 - Jaccard(top_terms_t, top_terms_t+1)`
+- ML-only probabilistic drift: LDA topic-mixture Jensen-Shannon distance
+- DL-only semantic drift: MiniLM embedding centroid cosine distance
+
+`--mode hybrid` reports ML-only, DL-only, and Hybrid precision/recall/F1 against
+a weak real-data target: shifts in HuffPost editor category distribution. It
+also reports Spearman rank correlation so short test windows are not judged only
+by one top-percentile transition. This is an ablation study on one chronological
+test set, not separate disconnected experiments.
+
+```bash
+python -m src.main --mode hybrid \
+  --csv-path data/sample/news_2018_h1.csv \
+  --train-start 2018-01-01 --train-end 2018-05-01 \
+  --test-start 2018-05-01 --test-end 2018-07-01 \
+  --ablation-percentile 80
+```
+
+See `docs/architecture.md` for the hybrid data-flow and fusion diagram.

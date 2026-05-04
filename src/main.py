@@ -29,6 +29,11 @@ from src.metrics import (
     cluster_category_alignment,
     mean_adjacent_cosine_distance,
 )
+from src.hybrid import (
+    ablation_table,
+    category_distribution_drift,
+    fuse_transition_scores,
+)
 from src.events import (
     detect_spike_events,
     jsd_adjacent_from_topic_means,
@@ -416,11 +421,106 @@ def run_events(
     return events_out
 
 
+def run_hybrid_ablation(
+    train_df,
+    test_df,
+    *,
+    num_topics=6,
+    passes=10,
+    seed=42,
+    extra_stop=None,
+    event_percentile=90.0,
+    ablation_percentile=80.0,
+    event_top_k_terms=15,
+    embedding_model="sentence-transformers/all-MiniLM-L6-v2",
+):
+    """Run the Phase 3 hybrid fusion and same-split ablation study."""
+    print("\n=== HYBRID FUSION + ABLATION STUDY ===")
+    if len(train_df) == 0 or len(test_df) == 0:
+        print("Need non-empty train and test splits — skip hybrid ablation.")
+        return []
+
+    test_df_sorted = test_df.sort_values("timestamp").reset_index(drop=True)
+    bins = sorted(test_df_sorted["time_bin"].unique())
+    if len(bins) < 2:
+        print("Need at least two test time bins — skip hybrid ablation.")
+        return []
+
+    # ML signal 1: lexical top-term drift.
+    freq_terms_by_bin = frequency_top_terms(
+        test_df_sorted, k=event_top_k_terms, extra_stop=extra_stop
+    )
+    lexical_similarity, transitions = lexical_jaccard_drift_from_top_terms(
+        freq_terms_by_bin, top_k=event_top_k_terms
+    )
+
+    # ML signal 2: probabilistic LDA topic-mixture drift.
+    train_texts = train_df.sort_values("timestamp")["tokens"].tolist()
+    test_texts = test_df_sorted["tokens"].tolist()
+    lda_model, dictionary, _ = train_lda(
+        train_texts, num_topics=num_topics, passes=passes, seed=seed
+    )
+    test_corpus = [dictionary.doc2bow(t, allow_update=False) for t in test_texts]
+    theta_test = doc_topic_matrix(lda_model, test_corpus)
+    bin_means: list[np.ndarray] = []
+    for b in bins:
+        mask = test_df_sorted["time_bin"] == b
+        bin_means.append(theta_test[mask.values].mean(axis=0))
+    lda_jsd = jsd_adjacent_from_topic_means(bin_means)
+
+    # DL signal: neural semantic drift between adjacent embedding centroids.
+    from src.embeddings import encode_texts, mean_embedding_per_bin
+
+    print(f"Encoding test documents with {embedding_model} for semantic drift...")
+    X_test, _ = encode_texts(
+        test_df_sorted["text"].tolist(),
+        model_name=embedding_model,
+        show_progress_bar=False,
+    )
+    _, semantic_centroids = mean_embedding_per_bin(test_df_sorted, X_test)
+    semantic_cosine = []
+    for i in range(len(semantic_centroids) - 1):
+        a = semantic_centroids[i]
+        b = semantic_centroids[i + 1]
+        semantic_cosine.append(float(1.0 - np.clip(np.dot(a, b), -1.0, 1.0)))
+
+    fused = fuse_transition_scores(
+        transitions=transitions,
+        lexical_similarity=lexical_similarity,
+        lda_jsd=lda_jsd,
+        semantic_cosine_distance=semantic_cosine,
+    )
+    target = category_distribution_drift(test_df_sorted, bins)
+    table = ablation_table(fused, target, percentile=ablation_percentile)
+
+    print("\nWeak target: top category-distribution shifts in held-out time bins")
+    print(f"Threshold: top {100 - ablation_percentile:.0f}% transitions by score/target")
+    print("\n| Model | Precision | Recall | F1 | Spearman rho |")
+    print("|---|---:|---:|---:|---:|")
+    for row in table:
+        print(
+            f"| {row['model']} | {row['precision']:.3f} | "
+            f"{row['recall']:.3f} | {row['f1']:.3f} | {row['spearman']:.3f} |"
+        )
+
+    print("\nTop hybrid transitions:")
+    for row in sorted(fused, key=lambda r: r["hybrid_score"], reverse=True)[:5]:
+        print(
+            f"  {row['start_bin']} -> {row['end_bin']} | "
+            f"hybrid={row['hybrid_score']:.3f} | "
+            f"lex={row['lexical_drift']:.3f} | "
+            f"lda={row['lda_jsd']:.3f} | "
+            f"semantic={row['semantic_cosine_distance']:.3f}"
+        )
+
+    return table
+
+
 def main():
     parser = argparse.ArgumentParser(description="Trend detector — Phase 1")
     parser.add_argument(
         "--mode",
-        choices=["baselines", "lda", "embeddings", "events", "all"],
+        choices=["baselines", "lda", "embeddings", "events", "hybrid", "all"],
         default="all",
     )
     parser.add_argument("--csv-path", type=str, default=None)
@@ -467,6 +567,12 @@ def main():
         type=float,
         default=90.0,
         help="Spike detector threshold as percentile of adjacent drift scores",
+    )
+    parser.add_argument(
+        "--ablation-percentile",
+        type=float,
+        default=80.0,
+        help="Hybrid mode: percentile threshold for ML-only/DL-only/Hybrid ablation table",
     )
     parser.add_argument(
         "--event-top-k-terms",
@@ -543,6 +649,18 @@ def main():
                 f"  [LDA] {ev['start_bin']} -> {ev['end_bin']} | "
                 f"score={ev['score']:.3f} | label={ev['label']} | category={ev['dominant_category']}"
             )
+    if args.mode in ("hybrid", "all"):
+        run_hybrid_ablation(
+            train_df,
+            test_df,
+            num_topics=args.num_topics,
+            passes=args.lda_passes,
+            seed=args.seed,
+            extra_stop=extra_stop,
+            event_percentile=args.event_percentile,
+            event_top_k_terms=args.event_top_k_terms,
+            embedding_model=args.embedding_model,
+        )
 
 
 if __name__ == "__main__":
