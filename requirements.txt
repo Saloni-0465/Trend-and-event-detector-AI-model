@@ -9,3 +9,4 @@ nltk>=3.8
 tqdm>=4.66
 pytest>=7.4
 matplotlib>=3.7
+Flask>=3.0

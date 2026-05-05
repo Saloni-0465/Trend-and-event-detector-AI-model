@@ -658,6 +658,7 @@ def main():
             seed=args.seed,
             extra_stop=extra_stop,
             event_percentile=args.event_percentile,
+            ablation_percentile=args.ablation_percentile,
             event_top_k_terms=args.event_top_k_terms,
             embedding_model=args.embedding_model,
         )

@@ -50,6 +50,9 @@ python -m src.main --mode events
 # Phase 3: hybrid fusion + same-split ablation table
 python -m src.main --mode hybrid
 
+# interactive dashboard for events, ablations, and hybrid transitions
+python -m src.webapp
+
 # use full dataset instead of 6-month subset
 python -m src.main --mode all --csv-path data/news_full.csv
 
@@ -80,6 +83,19 @@ python -m src.main --mode hybrid
 ```bash
 pytest tests/ -v
 ```
+
+## Dashboard
+
+Run the local dashboard with:
+
+```bash
+python -m src.webapp
+```
+
+Then open `http://127.0.0.1:8000`. The dashboard exposes the same train/test
+split controls as the CLI and visualizes lexical events, LDA topic drift,
+MiniLM semantic drift, hybrid transition scores, and the ML-only/DL-only/Hybrid
+ablation table.
 
 ## Project structure
 
