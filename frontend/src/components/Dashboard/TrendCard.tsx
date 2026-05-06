@@ -1,6 +1,6 @@
 "use client";
 import { motion } from "framer-motion";
-import { TrendingUp, MessageCircle, BarChart2 } from "lucide-react";
+import { TrendingUp, BarChart2 } from "lucide-react";
 
 interface TrendCardProps {
   name: string;
@@ -14,6 +14,7 @@ export const TrendCard = ({ name, score, velocity, sentiment, keywords }: TrendC
   const sentimentColor = 
     sentiment === "Positive" ? "text-green-400" : 
     sentiment === "Negative" ? "text-red-400" : "text-gray-400";
+  const velocityLabel = `${velocity > 0 ? "+" : ""}${velocity.toFixed(1)}%`;
 
   return (
     <motion.div 
@@ -36,7 +37,7 @@ export const TrendCard = ({ name, score, velocity, sentiment, keywords }: TrendC
         </div>
         <div className="flex items-center gap-1.5 text-purple-400">
           <TrendingUp size={16} />
-          <span className="text-sm font-bold">+{velocity}%</span>
+          <span className="text-sm font-bold">{velocityLabel}</span>
         </div>
       </div>
 

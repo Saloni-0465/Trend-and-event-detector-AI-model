@@ -1,0 +1,378 @@
+{
+  "meta": {
+    "generated_at": "2026-05-05T21:05:29.514949+00:00",
+    "dataset": "News_Category_Dataset_v3.json",
+    "latest_article_date": "2022-09-23",
+    "sampled_recent_articles": 948,
+    "pipeline": [
+      "TF-IDF",
+      "LDA",
+      "SentenceTransformer(all-MiniLM-L6-v2)",
+      "KMeans"
+    ]
+  },
+  "stats": {
+    "total_articles": 209478,
+    "total_articles_label": "209.5K",
+    "weekly_change_pct": -78.0,
+    "last_week_articles": 9,
+    "previous_week_articles": 41,
+    "active_sources": 42
+  },
+  "activity": [
+    {
+      "name": "Aug 04",
+      "value": 40
+    },
+    {
+      "name": "Aug 11",
+      "value": 39
+    },
+    {
+      "name": "Aug 18",
+      "value": 40
+    },
+    {
+      "name": "Aug 25",
+      "value": 38
+    },
+    {
+      "name": "Sep 01",
+      "value": 38
+    },
+    {
+      "name": "Sep 08",
+      "value": 39
+    },
+    {
+      "name": "Sep 15",
+      "value": 41
+    },
+    {
+      "name": "Sep 22",
+      "value": 9
+    }
+  ],
+  "trends": [
+    {
+      "cluster": 2,
+      "name": "Russian Ukraine Russia",
+      "score": 48.3,
+      "velocity": 200.0,
+      "sentiment": "Positive",
+      "keywords": [
+        "Russian",
+        "Ukraine",
+        "Russia",
+        "War"
+      ],
+      "articles_count": 9,
+      "category": "World News",
+      "previous_mentions": 3
+    },
+    {
+      "cluster": 1,
+      "name": "Star Actor Tweets",
+      "score": 38.4,
+      "velocity": 31.8,
+      "sentiment": "Positive",
+      "keywords": [
+        "Star",
+        "Actor",
+        "Tweets",
+        "Series"
+      ],
+      "articles_count": 29,
+      "category": "Entertainment",
+      "previous_mentions": 22
+    },
+    {
+      "cluster": 0,
+      "name": "Police Man Shooting",
+      "score": 24.8,
+      "velocity": -9.1,
+      "sentiment": "Neutral",
+      "keywords": [
+        "Police",
+        "Man",
+        "Shooting",
+        "Covid"
+      ],
+      "articles_count": 30,
+      "category": "U.S. News",
+      "previous_mentions": 33
+    },
+    {
+      "cluster": 3,
+      "name": "Trump Biden Abortion",
+      "score": 10.5,
+      "velocity": -21.1,
+      "sentiment": "Negative",
+      "keywords": [
+        "Trump",
+        "Biden",
+        "Abortion",
+        "Gop"
+      ],
+      "articles_count": 15,
+      "category": "Politics",
+      "previous_mentions": 19
+    }
+  ],
+  "predictions": [
+    {
+      "id": 1,
+      "topic": "Russian Ukraine Russia",
+      "predicted_score": 99.0,
+      "velocity_forecast": 200.0,
+      "current_mentions": 9,
+      "predicted_mentions": 22,
+      "confidence": 0.89,
+      "horizon": "14d",
+      "drivers": [
+        "Russian",
+        "Ukraine",
+        "Russia",
+        "Abortion"
+      ],
+      "category": "World News",
+      "direction": "breakout"
+    },
+    {
+      "id": 2,
+      "topic": "Star Actor Tweets",
+      "predicted_score": 47.2,
+      "velocity_forecast": 31.8,
+      "current_mentions": 29,
+      "predicted_mentions": 38,
+      "confidence": 0.84,
+      "horizon": "14d",
+      "drivers": [
+        "Star",
+        "Actor",
+        "Tweets",
+        "Trump"
+      ],
+      "category": "Entertainment",
+      "direction": "rising"
+    },
+    {
+      "id": 3,
+      "topic": "Police Man Shooting",
+      "predicted_score": 25.0,
+      "velocity_forecast": -9.1,
+      "current_mentions": 30,
+      "predicted_mentions": 27,
+      "confidence": 0.71,
+      "horizon": "14d",
+      "drivers": [
+        "Police",
+        "Man",
+        "Shooting",
+        "Court"
+      ],
+      "category": "U.S. News",
+      "direction": "cooling"
+    },
+    {
+      "id": 4,
+      "topic": "Trump Biden Abortion",
+      "predicted_score": 14.5,
+      "velocity_forecast": -21.1,
+      "current_mentions": 15,
+      "predicted_mentions": 12,
+      "confidence": 0.69,
+      "horizon": "14d",
+      "drivers": [
+        "Trump",
+        "Biden",
+        "Abortion",
+        "President"
+      ],
+      "category": "Politics",
+      "direction": "cooling"
+    }
+  ],
+  "events": [
+    {
+      "id": 1,
+      "title": "Russian Ukraine Russia Spike Detected",
+      "summary": "World News cluster volume increased by 200.0% from 3 to 9 articles in the latest 14-day window. Drivers: Russian, Ukraine, Russia.",
+      "type": "spike",
+      "confidence": 0.96,
+      "trend": "Russian Ukraine Russia",
+      "time": "Window ending 2022-09-23",
+      "articles_count": 9,
+      "velocity": 200.0
+    },
+    {
+      "id": 2,
+      "title": "Star Actor Tweets Emerging Detected",
+      "summary": "Entertainment cluster volume increased by 31.8% from 22 to 29 articles in the latest 14-day window. Drivers: Star, Actor, Tweets.",
+      "type": "emerging",
+      "confidence": 0.87,
+      "trend": "Star Actor Tweets",
+      "time": "Window ending 2022-09-23",
+      "articles_count": 29,
+      "velocity": 31.8
+    },
+    {
+      "id": 3,
+      "title": "Trump Biden Abortion Declining Detected",
+      "summary": "Politics cluster volume decreased by 21.1% from 19 to 15 articles in the latest 14-day window. Drivers: Trump, Biden, Abortion.",
+      "type": "declining",
+      "confidence": 0.72,
+      "trend": "Trump Biden Abortion",
+      "time": "Window ending 2022-09-23",
+      "articles_count": 15,
+      "velocity": -21.1
+    },
+    {
+      "id": 4,
+      "title": "Police Man Shooting Declining Detected",
+      "summary": "U.S. News cluster volume decreased by 9.1% from 33 to 30 articles in the latest 14-day window. Drivers: Police, Man, Shooting.",
+      "type": "declining",
+      "confidence": 0.76,
+      "trend": "Police Man Shooting",
+      "time": "Window ending 2022-09-23",
+      "articles_count": 30,
+      "velocity": -9.1
+    }
+  ],
+  "alerts": [
+    {
+      "id": 1,
+      "title": "Spike Detected: Russian Ukraine Russia",
+      "message": "Article volume increased by 200.0% versus the previous 14-day window. The model score is 48.3 with 9 current mentions.",
+      "severity": "critical",
+      "trend": "Russian Ukraine Russia",
+      "time": "2022-09-23 window",
+      "read": false
+    },
+    {
+      "id": 2,
+      "title": "Spike Detected: Star Actor Tweets",
+      "message": "Article volume increased by 31.8% versus the previous 14-day window. The model score is 38.4 with 29 current mentions.",
+      "severity": "warning",
+      "trend": "Star Actor Tweets",
+      "time": "2022-09-23 window",
+      "read": false
+    },
+    {
+      "id": 3,
+      "title": "Cooling Trend: Trump Biden Abortion",
+      "message": "Article volume decreased by 21.1% versus the previous 14-day window. Monitor whether this cluster is leaving the active trend set.",
+      "severity": "warning",
+      "trend": "Trump Biden Abortion",
+      "time": "2022-09-23 window",
+      "read": false
+    },
+    {
+      "id": 4,
+      "title": "Cooling Trend: Police Man Shooting",
+      "message": "Article volume decreased by 9.1% versus the previous 14-day window. Monitor whether this cluster is leaving the active trend set.",
+      "severity": "warning",
+      "trend": "Police Man Shooting",
+      "time": "2022-09-23 window",
+      "read": true
+    }
+  ],
+  "sources": [
+    {
+      "name": "Politics",
+      "articlesTotal": 35598,
+      "status": "active",
+      "type": "dataset",
+      "lastFetch": "2022-09-23",
+      "coveragePct": 17.0
+    },
+    {
+      "name": "Wellness",
+      "articlesTotal": 17945,
+      "status": "active",
+      "type": "dataset",
+      "lastFetch": "2022-09-23",
+      "coveragePct": 8.6
+    },
+    {
+      "name": "Entertainment",
+      "articlesTotal": 17360,
+      "status": "active",
+      "type": "dataset",
+      "lastFetch": "2022-09-23",
+      "coveragePct": 8.3
+    },
+    {
+      "name": "Travel",
+      "articlesTotal": 9897,
+      "status": "active",
+      "type": "dataset",
+      "lastFetch": "2022-09-23",
+      "coveragePct": 4.7
+    },
+    {
+      "name": "Style & Beauty",
+      "articlesTotal": 9814,
+      "status": "active",
+      "type": "dataset",
+      "lastFetch": "2022-09-23",
+      "coveragePct": 4.7
+    },
+    {
+      "name": "Parenting",
+      "articlesTotal": 8791,
+      "status": "active",
+      "type": "dataset",
+      "lastFetch": "2022-09-23",
+      "coveragePct": 4.2
+    },
+    {
+      "name": "Healthy Living",
+      "articlesTotal": 6688,
+      "status": "active",
+      "type": "dataset",
+      "lastFetch": "2022-09-23",
+      "coveragePct": 3.2
+    },
+    {
+      "name": "Queer Voices",
+      "articlesTotal": 6346,
+      "status": "active",
+      "type": "dataset",
+      "lastFetch": "2022-09-23",
+      "coveragePct": 3.0
+    },
+    {
+      "name": "Food & Drink",
+      "articlesTotal": 6340,
+      "status": "active",
+      "type": "dataset",
+      "lastFetch": "2022-09-23",
+      "coveragePct": 3.0
+    },
+    {
+      "name": "Business",
+      "articlesTotal": 5989,
+      "status": "active",
+      "type": "dataset",
+      "lastFetch": "2022-09-23",
+      "coveragePct": 2.9
+    },
+    {
+      "name": "Comedy",
+      "articlesTotal": 5385,
+      "status": "active",
+      "type": "dataset",
+      "lastFetch": "2022-09-23",
+      "coveragePct": 2.6
+    },
+    {
+      "name": "Sports",
+      "articlesTotal": 5074,
+      "status": "active",
+      "type": "dataset",
+      "lastFetch": "2022-09-23",
+      "coveragePct": 2.4
+    }
+  ]
+}

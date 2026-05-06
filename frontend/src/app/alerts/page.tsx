@@ -1,5 +1,6 @@
 "use client";
 import { DashboardLayout } from "@/components/Dashboard/DashboardLayout";
+import dashboardData from "@/data/dashboard.json";
 import { motion } from "framer-motion";
 import { Bell, BellRing, Check, X, TrendingUp, AlertTriangle } from "lucide-react";
 import { useState } from "react";
@@ -14,53 +15,10 @@ interface Alert {
   read: boolean;
 }
 
-const initialAlerts: Alert[] = [
-  {
-    id: 1,
-    title: "Spike Detected: AI Research",
-    message: "Article volume for 'Large Language Models' increased by 340% in the last 4 hours. This exceeds the 90th percentile threshold.",
-    severity: "critical",
-    trend: "Large Language Models",
-    time: "12 min ago",
-    read: false,
-  },
-  {
-    id: 2,
-    title: "New Emerging Topic",
-    message: "A new cluster around 'Quantum Computing Breakthroughs' has formed with 47 articles in the last 2 hours.",
-    severity: "warning",
-    trend: "Quantum Computing",
-    time: "1 hour ago",
-    read: false,
-  },
-  {
-    id: 3,
-    title: "Sentiment Shift: Aviation",
-    message: "Sentiment for 'Sustainable Aviation Fuel' shifted from Neutral to Positive across 120+ recent articles.",
-    severity: "info",
-    trend: "Sustainable Aviation Fuel",
-    time: "3 hours ago",
-    read: false,
-  },
-  {
-    id: 4,
-    title: "Trend Velocity Drop",
-    message: "Central Bank Digital Currencies velocity dropped by 15% — potential topic cooling detected.",
-    severity: "warning",
-    trend: "Central Bank Digital Currencies",
-    time: "5 hours ago",
-    read: true,
-  },
-  {
-    id: 5,
-    title: "Data Source Lag",
-    message: "NewsAPI ingestion is running 10 minutes behind schedule. Monitor for stale data.",
-    severity: "info",
-    trend: "System",
-    time: "6 hours ago",
-    read: true,
-  },
-];
+const initialAlerts: Alert[] = dashboardData.alerts.map((alert) => ({
+  ...alert,
+  severity: alert.severity as Alert["severity"],
+}));
 
 const severityConfig = {
   critical: { color: "text-red-400", bg: "bg-red-500/10 border-red-500/20", icon: AlertTriangle, dot: "bg-red-500" },
@@ -92,7 +50,9 @@ export default function AlertsPage() {
           >
             Alerts
           </motion.h1>
-          <p className="text-gray-500">Real-time notifications from the trend detection engine.</p>
+          <p className="text-gray-500">
+            Model-generated notifications from {dashboardData.meta.dataset}, latest article date {dashboardData.meta.latest_article_date}.
+          </p>
         </section>
 
         {/* Unread Banner */}

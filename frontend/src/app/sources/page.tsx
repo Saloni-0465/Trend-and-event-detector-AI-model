@@ -1,101 +1,37 @@
 "use client";
 import { DashboardLayout } from "@/components/Dashboard/DashboardLayout";
+import dashboardData from "@/data/dashboard.json";
 import { motion } from "framer-motion";
-import { Globe, Rss, RefreshCw, CheckCircle, XCircle, Clock } from "lucide-react";
-import { useState } from "react";
+import { Database } from "lucide-react";
 
 interface Source {
   id: number;
   name: string;
-  type: "api" | "rss" | "scraper";
+  type: "dataset";
   url: string;
-  status: "active" | "error" | "paused";
+  status: "active";
   lastFetch: string;
   articlesTotal: number;
+  coveragePct: number;
 }
 
-const initialSources: Source[] = [
-  {
-    id: 1,
-    name: "NewsAPI - Top Headlines",
-    type: "api",
-    url: "https://newsapi.org/v2/top-headlines",
-    status: "active",
-    lastFetch: "2 min ago",
-    articlesTotal: 42500,
-  },
-  {
-    id: 2,
-    name: "HuffPost Archive",
-    type: "rss",
-    url: "https://www.huffpost.com/section/front-page",
-    status: "active",
-    lastFetch: "15 min ago",
-    articlesTotal: 210000,
-  },
-  {
-    id: 3,
-    name: "Reuters World News",
-    type: "api",
-    url: "https://api.reuters.com/v2/articles",
-    status: "active",
-    lastFetch: "5 min ago",
-    articlesTotal: 87300,
-  },
-  {
-    id: 4,
-    name: "TechCrunch Scraper",
-    type: "scraper",
-    url: "https://techcrunch.com",
-    status: "error",
-    lastFetch: "3 hours ago",
-    articlesTotal: 15200,
-  },
-  {
-    id: 5,
-    name: "Reddit r/worldnews",
-    type: "api",
-    url: "https://www.reddit.com/r/worldnews.json",
-    status: "paused",
-    lastFetch: "1 day ago",
-    articlesTotal: 6800,
-  },
-];
+const initialSources: Source[] = dashboardData.sources.map((source, index) => ({
+  id: index + 1,
+  name: source.name,
+  type: "dataset",
+  url: `research/data/raw/${dashboardData.meta.dataset}#${source.name.toLowerCase().replaceAll(" ", "-")}`,
+  status: "active",
+  lastFetch: source.lastFetch,
+  articlesTotal: source.articlesTotal,
+  coveragePct: source.coveragePct,
+}));
 
 const statusConfig = {
-  active: { color: "text-green-400", icon: CheckCircle, label: "Active", dot: "bg-green-500" },
-  error: { color: "text-red-400", icon: XCircle, label: "Error", dot: "bg-red-500" },
-  paused: { color: "text-yellow-400", icon: Clock, label: "Paused", dot: "bg-yellow-500" },
-};
-
-const typeIcons = {
-  api: Globe,
-  rss: Rss,
-  scraper: RefreshCw,
+  active: { color: "text-green-400", label: "Loaded", dot: "bg-green-500" },
 };
 
 export default function SourcesPage() {
-  const [sources, setSources] = useState<Source[]>(initialSources);
-  const [refreshing, setRefreshing] = useState<number | null>(null);
-
-  const handleRefresh = (id: number) => {
-    setRefreshing(id);
-    setTimeout(() => {
-      setSources((prev) =>
-        prev.map((s) => (s.id === id ? { ...s, lastFetch: "Just now", status: "active" as const } : s))
-      );
-      setRefreshing(null);
-    }, 1500);
-  };
-
-  const togglePause = (id: number) => {
-    setSources((prev) =>
-      prev.map((s) =>
-        s.id === id ? { ...s, status: s.status === "paused" ? ("active" as const) : ("paused" as const) } : s
-      )
-    );
-  };
-
+  const sources = initialSources;
   const activeCount = sources.filter((s) => s.status === "active").length;
   const totalArticles = sources.reduce((sum, s) => sum + s.articlesTotal, 0);
 
@@ -110,14 +46,14 @@ export default function SourcesPage() {
           >
             Data Sources
           </motion.h1>
-          <p className="text-gray-500">Manage ingestion pipelines and monitor source health.</p>
+          <p className="text-gray-500">Dataset category coverage used by the TF-IDF, LDA, embedding, and clustering pipeline.</p>
         </section>
 
         {/* Stats */}
         <section className="grid grid-cols-3 gap-6">
           {[
             { label: "Total Sources", value: sources.length.toString(), color: "from-purple-500/20 to-purple-500/5" },
-            { label: "Active", value: activeCount.toString(), color: "from-green-500/20 to-green-500/5" },
+            { label: "Loaded", value: activeCount.toString(), color: "from-green-500/20 to-green-500/5" },
             { label: "Articles Ingested", value: `${(totalArticles / 1000).toFixed(0)}K`, color: "from-blue-500/20 to-blue-500/5" },
           ].map((stat, i) => (
             <motion.div
@@ -139,18 +75,16 @@ export default function SourcesPage() {
           <div className="rounded-2xl border border-white/10 overflow-hidden">
             {/* Header */}
             <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-white/5 text-xs text-gray-500 uppercase tracking-widest font-bold">
-              <div className="col-span-4">Source</div>
+              <div className="col-span-4">Category</div>
               <div className="col-span-2">Type</div>
               <div className="col-span-2">Status</div>
-              <div className="col-span-2">Last Fetch</div>
-              <div className="col-span-2 text-right">Actions</div>
+              <div className="col-span-2">Coverage</div>
+              <div className="col-span-2 text-right">Articles</div>
             </div>
 
             {/* Rows */}
             {sources.map((source, i) => {
               const sCfg = statusConfig[source.status];
-              const StatusIcon = sCfg.icon;
-              const TypeIcon = typeIcons[source.type];
 
               return (
                 <motion.div
@@ -162,32 +96,18 @@ export default function SourcesPage() {
                 >
                   <div className="col-span-4">
                     <p className="font-medium text-sm text-white">{source.name}</p>
-                    <p className="text-xs text-gray-600 truncate">{source.url}</p>
+                    <p className="text-xs text-gray-600 truncate">Latest article: {source.lastFetch}</p>
                   </div>
                   <div className="col-span-2 flex items-center gap-2 text-sm text-gray-400">
-                    <TypeIcon size={14} />
+                    <Database size={14} />
                     <span className="capitalize">{source.type}</span>
                   </div>
                   <div className="col-span-2 flex items-center gap-2">
                     <span className={`w-2 h-2 rounded-full ${sCfg.dot} ${source.status === "active" ? "animate-pulse" : ""}`} />
                     <span className={`text-sm font-medium ${sCfg.color}`}>{sCfg.label}</span>
                   </div>
-                  <div className="col-span-2 text-sm text-gray-500">{source.lastFetch}</div>
-                  <div className="col-span-2 flex justify-end gap-2">
-                    <button
-                      onClick={() => handleRefresh(source.id)}
-                      disabled={refreshing === source.id}
-                      className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-medium text-gray-400 hover:text-white transition-all disabled:opacity-30"
-                    >
-                      <RefreshCw size={12} className={refreshing === source.id ? "animate-spin" : ""} />
-                    </button>
-                    <button
-                      onClick={() => togglePause(source.id)}
-                      className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-medium text-gray-400 hover:text-white transition-all"
-                    >
-                      {source.status === "paused" ? "Resume" : "Pause"}
-                    </button>
-                  </div>
+                  <div className="col-span-2 text-sm text-gray-500">{source.coveragePct.toFixed(1)}%</div>
+                  <div className="col-span-2 text-right text-sm text-gray-300">{source.articlesTotal.toLocaleString()}</div>
                 </motion.div>
               );
             })}

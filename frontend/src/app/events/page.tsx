@@ -1,51 +1,19 @@
 "use client";
 import { DashboardLayout } from "@/components/Dashboard/DashboardLayout";
+import dashboardData from "@/data/dashboard.json";
 import { motion } from "framer-motion";
-import { Zap, TrendingUp, ArrowUpRight } from "lucide-react";
+import { TrendingUp, ArrowUpRight } from "lucide-react";
 
-const mockEvents = [
-  {
-    id: 1,
-    title: "LLM Efficiency Breakthrough",
-    summary: "New architecture reduces inference cost by 90%, triggering a massive spike in AI research headlines.",
-    type: "spike",
-    confidence: 0.95,
-    trend: "Large Language Models",
-    time: "2 hours ago",
-  },
-  {
-    id: 2,
-    title: "EU Green Aviation Mandate",
-    summary: "European Union announces mandatory sustainable fuel quotas for all commercial flights by 2030.",
-    type: "emerging",
-    confidence: 0.82,
-    trend: "Sustainable Aviation Fuel",
-    time: "5 hours ago",
-  },
-  {
-    id: 3,
-    title: "Digital Yuan Pilot Expansion",
-    summary: "China expands CBDC pilot program to 10 additional provinces, covering 300M users.",
-    type: "emerging",
-    confidence: 0.78,
-    trend: "Central Bank Digital Currencies",
-    time: "8 hours ago",
-  },
-  {
-    id: 4,
-    title: "Autonomous Taxi Incident in Austin",
-    summary: "Self-driving taxi involved in minor collision, reigniting safety regulation debates across US states.",
-    type: "spike",
-    confidence: 0.91,
-    trend: "Autonomous Vehicle Ethics",
-    time: "12 hours ago",
-  },
-];
+const events = dashboardData.events;
+const spikeCount = events.filter((event) => event.type === "spike").length;
+const avgConfidence = events.length
+  ? Math.round((events.reduce((sum, event) => sum + event.confidence, 0) / events.length) * 100)
+  : 0;
 
 const typeConfig: Record<string, { color: string; bg: string; label: string }> = {
-  spike: { color: "text-red-400", bg: "bg-red-500/10 border-red-500/20", label: "⚡ Spike" },
-  emerging: { color: "text-blue-400", bg: "bg-blue-500/10 border-blue-500/20", label: "🚀 Emerging" },
-  declining: { color: "text-yellow-400", bg: "bg-yellow-500/10 border-yellow-500/20", label: "📉 Declining" },
+  spike: { color: "text-red-400", bg: "bg-red-500/10 border-red-500/20", label: "Spike" },
+  emerging: { color: "text-blue-400", bg: "bg-blue-500/10 border-blue-500/20", label: "Emerging" },
+  declining: { color: "text-yellow-400", bg: "bg-yellow-500/10 border-yellow-500/20", label: "Declining" },
 };
 
 export default function EventsPage() {
@@ -66,9 +34,9 @@ export default function EventsPage() {
         {/* Stats Row */}
         <section className="grid grid-cols-3 gap-6">
           {[
-            { label: "Active Events", value: "4", sub: "Last 24h", color: "from-purple-500/20 to-purple-500/5" },
-            { label: "Spike Detections", value: "2", sub: "+100% vs yesterday", color: "from-red-500/20 to-red-500/5" },
-            { label: "Avg Confidence", value: "86%", sub: "Across all events", color: "from-blue-500/20 to-blue-500/5" },
+            { label: "Active Events", value: events.length.toString(), sub: "Latest 14-day window", color: "from-purple-500/20 to-purple-500/5" },
+            { label: "Spike Detections", value: spikeCount.toString(), sub: "Model velocity threshold", color: "from-red-500/20 to-red-500/5" },
+            { label: "Avg Confidence", value: `${avgConfidence}%`, sub: "Across generated events", color: "from-blue-500/20 to-blue-500/5" },
           ].map((stat, i) => (
             <motion.div
               key={stat.label}
@@ -88,7 +56,7 @@ export default function EventsPage() {
         <section>
           <h2 className="text-xl font-bold mb-6 tracking-tight">Recent Events</h2>
           <div className="space-y-4">
-            {mockEvents.map((event, i) => {
+            {events.map((event, i) => {
               const cfg = typeConfig[event.type] || typeConfig.emerging;
               return (
                 <motion.div
