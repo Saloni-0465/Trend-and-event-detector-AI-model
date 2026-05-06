@@ -1,0 +1,46 @@
+{
+  "config": {
+    "csv_path": "data/sample/news_2018_h1.csv",
+    "mode": "all",
+    "num_topics": 6,
+    "seed": 42,
+    "test_end": "2018-07-01",
+    "test_start": "2018-05-01",
+    "train_end": "2018-05-01",
+    "train_start": "2018-01-01",
+    "window": "7D"
+  },
+  "corpus_stats": {
+    "mean_length": 15.3,
+    "n_docs": 8749,
+    "total_tokens": 134268,
+    "vocab_size": 18858
+  },
+  "metrics": {
+    "baseline_test_jaccard_freq": 0.22092505935584397,
+    "baseline_train_jaccard_freq": 0.42184760319771764,
+    "embedding_best_k": 2,
+    "embedding_silhouette_by_k": {
+      "2": 0.03155552223324776,
+      "3": 0.027068432420492172,
+      "4": 0.02353516034781933,
+      "5": 0.02109370566904545,
+      "6": 0.01954992301762104
+    },
+    "embedding_silhouette_test": 0.030741693452000618,
+    "embedding_silhouette_train": 0.03155552223324776,
+    "embedding_total_labeled_docs": 8749,
+    "lda_coherence_u_mass_train": -5.177669347014224,
+    "lda_perplexity_test": -10.864710021525173,
+    "lda_perplexity_train": -9.037273549602146,
+    "lda_sample_topics_preview": [
+      "trump said house president white trump's says donald news people",
+      "new violence said police michael cohen sexual man olympic says",
+      "new trump said people just school state gun year florida"
+    ],
+    "lda_topic_jsd_mean_adjacent_test": 0.05674800392046919
+  },
+  "run_timestamp_utc": "2026-03-25T14:16:40.200790+00:00",
+  "test_n": 1554,
+  "train_n": 7195
+}
